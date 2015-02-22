@@ -562,7 +562,7 @@ allocate_block(void)
 
 	for(; blockno < size; blockno++)
 	{
-		if((bitvector_test(bitmap, blockno))
+		if(bitvector_test(bitmap, blockno))
 		{
 			bitvector_clear(bitmap, blockno);
 			break;
