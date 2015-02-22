@@ -553,7 +553,25 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
-	return 0;
+
+	uint32_t blockno = ospfs_super->os_firstinob;
+
+	uint32_t size = ospfs_super->os_nblocks;
+
+	void * bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
+
+	for(; blockno < size; blockno++)
+	{
+		if((bitvector_test(bitmap, blockno))
+		{
+			bitvector_clear(bitmap, blockno);
+			break;
+		}
+	}
+	if(blockno == size)
+			return 0;
+
+	return blockno;
 }
 
 
@@ -572,6 +590,12 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+
+	if(blockno < ospfs_super->os_firstinob || blockno > ospfs_super->os_nblocks)
+		return;
+
+	bitvector_set(ospfs_block(OSPFS_FREEMAP_BLK),blockno);
+	
 }
 
 
