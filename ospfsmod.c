@@ -31,6 +31,8 @@
  * and KERN_EMERG will make sure that you will see messages.) */
 #define eprintk(format, ...) printk(KERN_NOTICE format, ## __VA_ARGS__)
 
+//flag for conditiaonl compilation. When DEBUG is 1 compile the code for debug.
+#define DEBUG 1
 // The actual disk data is just an array of raw memory.
 // The initial array is defined in fsimg.c, based on your 'base' directory.
 extern uint8_t ospfs_data[];
@@ -423,6 +425,10 @@ ospfs_dir_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *ign
 static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
+    #if (DEBUG == 1)
+        eprintk("Enter ospfs_dir_readdir \n");
+    #endif
+    
 	struct inode *dir_inode = filp->f_dentry->d_inode;
 	ospfs_inode_t *dir_oi = ospfs_inode(dir_inode->i_ino);
 	uint32_t f_pos = filp->f_pos;
@@ -435,14 +441,25 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		ok_so_far = filldir(dirent, ".", 1, f_pos, dir_inode->i_ino, DT_DIR);
 		if (ok_so_far >= 0)
 			f_pos++;
+        else {
+            filp->f_pos = f_pos;
+            return 0;
+        }
 	}
 
 	if (r == 0 && ok_so_far >= 0 && f_pos == 1) {
 		ok_so_far = filldir(dirent, "..", 2, f_pos, filp->f_dentry->d_parent->d_inode->i_ino, DT_DIR);
 		if (ok_so_far >= 0)
 			f_pos++;
+        else {
+            filp->f_pos = f_pos;
+            return 0;
+        }
 	}
 
+    #if (DEBUG == 1)
+        eprintk("Preapre to go into the loop of entires\n");
+    #endif
 	// actual entries
 	while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
 		ospfs_direntry_t *od;
@@ -452,9 +469,14 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
-
+        if (f_pos * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) {
+            #if (DEBUG == 1)
+                eprintk("End of the entry, exit the loop\n");
+            #endif
+            r = 1;
+            break;
+        }
+        
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
 		 * directory-file as a sequence of ospfs_direntry structures.
@@ -476,6 +498,23 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
+        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);
+        //if inode number is zero, ignore it and continue
+        if (od -> od_ino == 0) {
+            f_pos++;
+            continue;
+        }
+        entry_oi = ospfs_inode(od -> od_ino);
+        ok_so_far = filldir(dirent, od -> od_name, strlen(od -> od_name), f_pos, od -> od_ino, entry_oi -> oi_ftype);
+        if (ok_so_far >= 0)
+            f_pos++;
+        else {
+            #if (DEBUG == 1)
+                eprintk("Filldir return < 0, exit the loop\n");
+            #endif
+            r = 0;
+            break;
+        }
 	}
 
 	// Save the file position and return!
