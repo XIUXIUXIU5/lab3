@@ -508,10 +508,24 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
             f_pos++;
             continue;
         }
+
         entry_oi = ospfs_inode(od -> od_ino);
-        ok_so_far = filldir(dirent, od -> od_name, strlen(od -> od_name), f_pos, od -> od_ino, entry_oi -> oi_ftype);
-        if (ok_so_far >= 0)
+      		switch(entry_oi->oi_ftype) {
+      			case OSPFS_FTYPE_REG:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_REG);
+					break;
+      			case OSPFS_FTYPE_DIR:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_DIR);
+					break;
+      			case OSPFS_FTYPE_SYMLINK:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_LNK);
+					break;
+    		 	default:d_type = -1;
+      }       
+
+       if (ok_so_far >= 0)
             f_pos++;
+
         else {
             #if (DEBUG == 1)
                 eprintk("Filldir return < 0, exit the loop\n");
