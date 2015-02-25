@@ -614,7 +614,7 @@ allocate_block(void)
 {
 	/* EXERCISE: Your code here */
 
-	uint32_t blockno = 0;
+	uint32_t blockno = 3;
 
 	uint32_t size = ospfs_super->os_nblocks;
 
@@ -622,19 +622,17 @@ allocate_block(void)
 
 	for(; blockno < size; blockno++)
 	{
-		if(bitvector_test(bitmap, blockno) == 1) 
+		if(bitvector_test(bitmap, blockno)) 
 		{
 			#if (DEBUG == 1)
-        		eprintk("allocate a block \n");
+        		eprintk("allocate a block %d\n",blockno); 
     		#endif
 			bitvector_clear(bitmap, blockno);
-			break;
+			return blockno;
 		}
 	}
-	if(blockno == size)
-			return 0;
+	return 0;
 
-	return blockno;
 }
 
 
@@ -654,7 +652,7 @@ free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
 
-	if(blockno < ospfs_super->os_firstinob + ospfs_super->os_ninodes / OSPFS_BLKINODES || blockno > ospfs_super->os_nblocks)
+	if(blockno < ospfs_super->os_firstinob + (ospfs_size2nblocks(ospfs_super->os_ninodes*OSPFS_INODESIZE)) || blockno > ospfs_super->os_nblocks)
 	{
 		#if (DEBUG == 1)
         	eprintk("free a block failed\n");
@@ -665,7 +663,7 @@ free_block(uint32_t blockno)
 	}	
 	bitvector_set(ospfs_block(OSPFS_FREEMAP_BLK),blockno);
 	#if (DEBUG == 1)
-        eprintk("free a block succeeds\n");
+        eprintk("free block #%d succeeds\n",blockno);
     #endif
 
 }
