@@ -32,7 +32,7 @@
 #define eprintk(format, ...) printk(KERN_NOTICE format, ## __VA_ARGS__)
 
 //flag for conditiaonl compilation. When DEBUG is 1 compile the code for debug.
-#define DEBUG 1
+#define DEBUG 0
 // The actual disk data is just an array of raw memory.
 // The initial array is defined in fsimg.c, based on your 'base' directory.
 extern uint8_t ospfs_data[];
