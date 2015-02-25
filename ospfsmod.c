@@ -1388,7 +1388,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 			return new_dir;
 	}
 
-	uint32_t retval = change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE) 
+	uint32_t retval = change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE);
 
 	if (retval != 0)
 		return ERR_PTR(retval); 
