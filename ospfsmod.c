@@ -469,7 +469,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-        if (f_pos * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) 
+        if ((f_pos-2) * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) 
         	//is it supposed to me f_pos-2 ?
         {
             #if (DEBUG == 1)
@@ -500,7 +500,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
-        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);//is it supposed to be f_pos-2
+        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, (f_pos-2) * OSPFS_DIRENTRY_SIZE);//is it supposed to be f_pos-2
         //if inode number is zero, ignore it and continue
         if (od -> od_ino == 0) {
             f_pos++;
