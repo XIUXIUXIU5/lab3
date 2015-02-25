@@ -32,7 +32,7 @@
 #define eprintk(format, ...) printk(KERN_NOTICE format, ## __VA_ARGS__)
 
 //flag for conditiaonl compilation. When DEBUG is 1 compile the code for debug.
-#define DEBUG 0
+#define DEBUG 1
 // The actual disk data is just an array of raw memory.
 // The initial array is defined in fsimg.c, based on your 'base' directory.
 extern uint8_t ospfs_data[];
@@ -608,6 +608,9 @@ allocate_block(void)
 	{
 		if(bitvector_test(bitmap, blockno) == 1) 
 		{
+			#if (DEBUG == 1)
+        		eprintk("allocate a block \n");
+    		#endif
 			bitvector_clear(bitmap, blockno);
 			break;
 		}
@@ -636,10 +639,19 @@ free_block(uint32_t blockno)
 	/* EXERCISE: Your code here */
 
 	if(blockno < ospfs_super->os_firstinob + ospfs_super->os_ninodes / OSPFS_BLKINODES || blockno > ospfs_super->os_nblocks)
-		return;
+	{
+		#if (DEBUG == 1)
+        	eprintk("free a block failed\n");
+    	#endif
 
+        return;
+
+	}	
 	bitvector_set(ospfs_block(OSPFS_FREEMAP_BLK),blockno);
-	
+	#if (DEBUG == 1)
+        eprintk("free a block succeeds\n");
+    #endif
+
 }
 
 
@@ -791,6 +803,9 @@ add_block(ospfs_inode_t *oi)
 			return -ENOSPC;
 		oi->oi_direct[n] = temp;
 		clear_block(ospfs_block(temp));
+		#if (DEBUG == 1)
+        	eprintk("add a block in direct block\n");
+    	#endif
 
 	}	
 
@@ -810,6 +825,9 @@ add_block(ospfs_inode_t *oi)
 		clear_block(first_indir_block);
 		first_indir_block[0] = allocated[1];
 		clear_block(ospfs_block((uint32_t)allocated[1]));	
+		#if (DEBUG == 1)
+        	eprintk("add a block as first block in indirect block\n");
+    	#endif
 	}
 
 
@@ -825,7 +843,9 @@ add_block(ospfs_inode_t *oi)
 		uint32_t index = direct_index(n);
 		first_indir_block[index] = allocated[0];
 		clear_block(ospfs_block((uint32_t)allocated[0]));
-
+		#if (DEBUG == 1)
+        	eprintk("add a block in indirect block\n");
+    	#endif
 	}
 
 	//need to add doubly indirect
@@ -846,7 +866,9 @@ add_block(ospfs_inode_t *oi)
 		clear_block(second_indir_block);
 		second_indir_block[0] = allocated[1];
 		clear_block(ospfs_block((uint32_t)allocated[1]));	
-
+		#if (DEBUG == 1)
+        	eprintk("add a block as first block in doubly indirect block\n");
+    	#endif
 	}
 
 	//already allocated doubly indirect
@@ -861,7 +883,9 @@ add_block(ospfs_inode_t *oi)
 		uint32_t index = indir_index(n);
 		second_indir_block[index] = allocated[0];
 		clear_block(ospfs_block((uint32_t)allocated[0]));
-
+		#if (DEBUG == 1)
+        	eprintk("add a block in doubly indirect block\n");
+    	#endif
 	}
 
 
@@ -912,6 +936,9 @@ remove_block(ospfs_inode_t *oi)
 		free_block(freeblock);
 		
 		oi->oi_direct[n-1] = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block in direct block\n");
+    	#endif		
 
 	}	
 
@@ -924,7 +951,9 @@ remove_block(ospfs_inode_t *oi)
 		free_block(oi->oi_indirect);
 
 		oi->oi_indirect = 0;
-
+		#if (DEBUG == 1)
+        	eprintk("free a block as first block in indirect block\n");
+    	#endif
 	}
 
 	//if it is in the indirect block
@@ -934,7 +963,9 @@ remove_block(ospfs_inode_t *oi)
 		uint32_t freeblock = indirect_block[n-OSPFS_NDIRECT];
 		free_block(freeblock);
 		indirect_block[n-OSPFS_NDIRECT] = 0;
-
+		#if (DEBUG == 1)
+        	eprintk("free a block in indirect block\n");
+    	#endif
 	}
 
 	//if it is the first block in doubly indirect block
@@ -945,6 +976,9 @@ remove_block(ospfs_inode_t *oi)
 		free_block(freeblock);
 		free_block(oi->oi_indirect2);
 		oi->oi_indirect2 = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block as first block in doubly indirect block\n");
+    	#endif		
 	}
 
 	//if it is in the doubly indirect block
@@ -954,6 +988,9 @@ remove_block(ospfs_inode_t *oi)
 		uint32_t freeblock = indirect2_block[n-OSPFS_NDIRECT];
 		free_block(freeblock);
 		indirect2_block[n-OSPFS_NDIRECT - OSPFS_NINDIRECT] = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block in doubly indirect block\n");
+    	#endif		
 	}
 
 	oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
@@ -1008,9 +1045,15 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	        /* EXERCISE: Your code here */
 		if(add_block(oi) == -ENOSPC)
 		{
+			#if (DEBUG == 1)
+        		eprintk("change size failed\n");
+    		#endif
 			while(ospfs_size2nblocks(oi->oi_size) != old_size)
 			{
 				remove_block(oi);
+				#if (DEBUG == 1)
+        			eprintk("free the blocks that has been added\n");
+    			#endif
 			}
 			return -ENOSPC;
 		}
@@ -1020,6 +1063,9 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 		remove_block(oi);
+		#if (DEBUG == 1)
+        	eprintk("remove block to shrink the size\n");
+    	#endif
 		return -EIO; // Replace this line
 	}
 
@@ -1384,7 +1430,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	 memcpy(new_dir->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len * sizeof(char));
 
 	 new_dir->od_name[dst_dentry->d_name.len] = '\0';
-	 
+
 	 return 0;
 
 
