@@ -1383,6 +1383,8 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	 memcpy(new_dir->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len * sizeof(char));
 
+	 new_dir->od_name[dst_dentry->d_name.len] = '\0';
+	 
 	 return 0;
 
 
