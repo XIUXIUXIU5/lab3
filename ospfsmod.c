@@ -1061,10 +1061,10 @@ remove_block(ospfs_inode_t *oi)
 	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
 	{
 		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
-		uint32_t freeblock = indirect_block[n-OSPFS_NDIRECT];
+		uint32_t freeblock = indirect_block[n-OSPFS_NDIRECT-1];
 		free_block(freeblock);
-		indirect_block[n-OSPFS_NDIRECT] = 0;
 		#if (DEBUG == 1)
+		indirect_block[n-OSPFS_NDIRECT] = 0;
         	eprintk("free a block in indirect block\n");
     	#endif
 	}
@@ -1072,10 +1072,13 @@ remove_block(ospfs_inode_t *oi)
 	//if it is the first block in doubly indirect block
 	else if(n == OSPFS_NDIRECT + OSPFS_NINDIRECT +1)
 	{
-		uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
-		uint32_t freeblock = indirect2_block[0];
-		free_block(freeblock);
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect2);
+		uint32_t* indirect_block2 = ospfs_block(indirect_block[0]);
+
+		free_block(indirect_block2[0]);
+		free_block(indirect_block[0]);
 		free_block(oi->oi_indirect2);
+
 		oi->oi_indirect2 = 0;
 		#if (DEBUG == 1)
         	eprintk("free a block as first block in doubly indirect block\n");
@@ -1083,18 +1086,39 @@ remove_block(ospfs_inode_t *oi)
 	}
 
 	//if it is in the doubly indirect block
-	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT *2)
+	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT *OSPFS_NINDIRECT)
 	{
-		uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
-		uint32_t freeblock = indirect2_block[n-OSPFS_NDIRECT];
-		free_block(freeblock);
-		indirect2_block[n-OSPFS_NDIRECT - OSPFS_NINDIRECT] = 0;
+		if ((n - OSPFS_NDIRECT-1) % 256 == 0) {
+            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
+            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
+
+            free_block(indirectDataL2[0]);
+            free_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
+
+            indirectDataL2[0] = 0;
+            indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT] = 0;
+
+        } else {
+            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
+            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
+
+            free_block(indirectDataL2[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT]);
+
+            indirectDataL2[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT]= 0;
+        }
 		#if (DEBUG == 1)
         	eprintk("free a block in doubly indirect block\n");
     	#endif		
 	}
 
-	oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
+	else 
+		return -EIO;
+	if(n <= 1)
+		oi_size = 0;
+	else
+		oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
+
+
 
 	return 0; // Replace this line
 }
