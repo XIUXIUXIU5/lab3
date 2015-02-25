@@ -1622,33 +1622,30 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 //   (hint: Should the given form be changed in any way to make this method
 //   easier?  With which character do most functions expect C strings to end?)
 
+
 static void *
 ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-  ospfs_symlink_inode_t *oi =
-    (ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
-  // Exercise: Your code here.
+    ospfs_symlink_inode_t *oi =
+        (ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
+    
+    char* q = strchr(oi->oi_symlink, '?');
+    char* c = strchr(oi->oi_symlink, ':');
 
-	char* real_link = NULL;
-	eprintk("following link: %s\n", oi->oi_symlink);
-	if (oi->oi_symlink[0] == '?') {
+    if (q && c) {
+        // root
+        if (current->uid == 0) {
+            c++;
+            nd_set_link(nd, c);
+        }
+        else {
+            nd_set_link(nd, oi->oi_symlink + strlen(oi->oi_symlink) + 1);
+        }
+    }
+    else
+        nd_set_link(nd, oi->oi_symlink);
 
-
-
-		if (current->uid == 0) {
-			//printk("I am ROOT\n");
-		  real_link = oi->oi_symlink+1;
-		}
-		else  {
-			//printk("Not ROOT\n");
-		  real_link = strchr(oi->oi_symlink, '\0')+1;
-		}
-		nd_set_link(nd, real_link);
-		return (void *) 0;
-	}
-	eprintk("Checkpoint2");
-  nd_set_link(nd, oi->oi_symlink);
-  return (void *) 0;
+    return (void *) 0;
 }
 
 
