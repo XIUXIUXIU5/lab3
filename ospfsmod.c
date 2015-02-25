@@ -1625,44 +1625,32 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 static void *
 ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	ospfs_symlink_inode_t *oi =
-		(ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
-	// Exercise: Your code here.
+  ospfs_symlink_inode_t *oi =
+    (ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
+  // Exercise: Your code here.
 
-	if((oi->oi_symlink[0] == 'r') && (oi->oi_symlink[1] == 'o') &&
-		(oi->oi_symlink[2] == 'o') && (oi->oi_symlink[3] == 't') &&
-		(oi->oi_symlink[4] == '?')) {
-		
-		char *cond = kmalloc(oi->oi_size, GFP_ATOMIC);
-		int c = 5;
-		
-		if(current->uid == 0) {
-			while(oi->oi_symlink[c] != ':') {
-				cond[c-5] = oi->oi_symlink[c];
-				c++;
-			}
+	char* real_link = NULL;
+	eprintk("following link: %s\n", oi->oi_symlink);
+	if (oi->oi_symlink[0] == '?') {
+
+
+
+		if (current->uid == 0) {
+			//printk("I am ROOT\n");
+		  real_link = oi->oi_symlink+1;
 		}
-		else {
-			int aftcol = 0;
-			int aftcolc = 0;
-			while(oi->oi_symlink[c] != '\0')
-			{
-				if(aftcol == 1)
-					cond[c-aftcolc] = oi->oi_symlink[c];
-				if(oi->oi_symlink[c] == ':') {
-					aftcol = 1;
-					aftcolc = c+1;
-				}
-				c++;
-			}
+		else  {
+			//printk("Not ROOT\n");
+		  real_link = strchr(oi->oi_symlink, '\0')+1;
 		}
-		nd_set_link(nd, cond);
+		nd_set_link(nd, real_link);
 		return (void *) 0;
 	}
-	
-	nd_set_link(nd, oi->oi_symlink);
-	return (void *) 0;
+	eprintk("Checkpoint2");
+  nd_set_link(nd, oi->oi_symlink);
+  return (void *) 0;
 }
+
 
 
 // Define the file system operations structures mentioned above.
