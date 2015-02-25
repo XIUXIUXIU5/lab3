@@ -900,8 +900,65 @@ remove_block(ospfs_inode_t *oi)
 	// current number of blocks in file
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
+
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+
+
+	//if it is in the direct block
+	if(n <= OSPFS_NDIRECT)
+	{
+		uint32_t freeblock = oi->oi_direct[n-1];
+
+		free_block(freeblock);
+		
+		oi->oi_direct[n-1] = 0;
+
+	}	
+
+	//if it is the first block in indirect block
+	else if (n == OSPFS_NDIRECT +1)
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+		uint32_t freeblock = indirect_block[0];
+		free_block(freeblock);
+		free_block(oi->oi_indirect);
+
+		oi->oi_indirect = 0;
+
+	}
+
+	//if it is in the indirect block
+	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+		uint32_t freeblock = indirect_block[n-OSPFS_NDIRECT];
+		free_block(freeblock);
+		indirect_block[n-OSPFS_NDIRECT] = 0;
+
+	}
+
+	//if it is the first block in doubly indirect block
+	else if(n == OSPFS_NDIRECT + OSPFS_NINDIRECT +1)
+	{
+		uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+		uint32_t freeblock = indirect2_block[0];
+		free_block(freeblock);
+		free_block(oi->oi_indirect2);
+		oi->oi_indirect2 = 0;
+	}
+
+	//if it is in the doubly indirect block
+	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT *2)
+	{
+		uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+		uint32_t freeblock = indirect2_block[n-OSPFS_NDIRECT];
+		free_block(freeblock);
+		indirect2_block[n-OSPFS_NDIRECT - OSPFS_NINDIRECT] = 0;
+	}
+
+	oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
+
+	return 0; // Replace this line
 }
 
 
