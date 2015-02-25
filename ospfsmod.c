@@ -674,7 +674,7 @@ indir2_index(uint32_t b)
 {
 	// Your code here.
 	if(b >= OSPFS_NDIRECT + OSPFS_NINDIRECT)
-		return 0
+		return 0;
 	return -1;
 }
 
@@ -755,7 +755,7 @@ direct_index(uint32_t b)
 //  3) update the oi->oi_size field
 
 static void
-clear_block(void* block)
+clear_block(uint32_t* block)
 {
 	int i = 0;
 	for(; i < OSPFS_BLKSIZE/4; i++)
@@ -803,10 +803,10 @@ add_block(ospfs_inode_t *oi)
 		}
 
 		oi->oi_indirect = allocated[0];
-		uint32_t * first_indir_block = ospfs_block(allocated[0]);
+		uint32_t * first_indir_block = ospfs_block((uint32_t)allocated[0]);
 		clear_block(first_indir_block);
 		first_indir_block[0] = allocated[1];
-		clear_block(ospfs_block(allocated[1]));	
+		clear_block(ospfs_block((uint32_t)allocated[1]));	
 	}
 
 
@@ -821,7 +821,7 @@ add_block(ospfs_inode_t *oi)
 		uint32_t * first_indir_block = ospfs_block(oi->oi_indirect);
 		uint32_t index = direct_index(n);
 		first_indir_block[index] = allocated[0];
-		clear_block(ospfs_block(allocated[0]));
+		clear_block(ospfs_block((uint32_t)allocated[0]));
 
 	}
 
@@ -839,10 +839,10 @@ add_block(ospfs_inode_t *oi)
 		}
 
 		oi->oi_indirect2 = allocated[0];
-		uint32_t * second_indir_block = ospfs_block(allocated[0]);
+		uint32_t * second_indir_block = ospfs_block((uint32_t)allocated[0]);
 		clear_block(second_indir_block);
 		second_indir_block[0] = allocated[1];
-		clear_block(ospfs_block(allocated[1]));	
+		clear_block(ospfs_block((uint32_t)allocated[1]));	
 
 	}
 
@@ -857,7 +857,7 @@ add_block(ospfs_inode_t *oi)
 		uint32_t * second_indir_block = ospfs_block(oi->oi_indirect2);
 		uint32_t index = indir_index(n);
 		second_indir_block[index] = allocated[0];
-		clear_block(ospfs_block(allocated[0]));
+		clear_block(ospfs_block((uint32_t)allocated[0]));
 
 	}
 
