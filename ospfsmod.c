@@ -1524,7 +1524,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	newfile_oi->oi_size = 0;
 	newfile_oi->oi_ftype = OSPFS_FTYPE_REG;
-	newfile_oi->oi_nlink ++;
+	newfile_oi->oi_nlink = 1;
 	newfile_oi->oi_mode = mode;
 
 
@@ -1567,7 +1567,34 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	uint32_t entry_ino = 0;
 
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN || strlen(symname) > OSPFS_MAXSYMLINKLEN)
+		return -ENAMETOOLONG;
+
+	if(find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.length) != NULL)
+		return -EEXIST;
+
+	ospfs_direntry_t *newsym_direntry = create_blank_direntry(dir_oi);
+
+	if(newsym_direntry == -ENOSPC)
+		return -ENOSPC;
+
+	uint32_t newsym_ino = allocate_inode();
+
+	if(newsym_ino == -ENOSPC)
+		return -ENOSPC;
+
+	newsym_direntry->od_ino = newsym_ino;
+	strcpy(newsym_direntry->od_name, dentry->d_name.name);
+
+	ospfs_symlink *newsym_oi = ospfs_inode(newsym_ino);
+
+	newsym_oi->oi_size = strlen(symname)+1;
+	newsym_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
+	newsym_oi->oi_nlink = 1;
+
+    strcpy(newsym_oi->oi_symlink, symname);
+
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
