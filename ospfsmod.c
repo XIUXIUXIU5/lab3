@@ -836,13 +836,17 @@ add_block(ospfs_inode_t *oi)
 	}
 
 	//if it can be add in the direct block
-	if(indir_index(n) == -1)
+	if(n < OSPFS_NDIRECT)
 	{
 		uint32_t temp = allocate_block();
 		if(temp == 0)
 			return -ENOSPC;
 		oi->oi_direct[n] = temp;
-		clear_block(ospfs_block(temp));
+
+		void* new_block = ospfs_block(temp);
+
+        memset(new_block, 0, OSPFS_BLKSIZE);
+
 		#if (DEBUG == 1)
         	eprintk("add a block in direct block\n");
     	#endif
@@ -860,11 +864,18 @@ add_block(ospfs_inode_t *oi)
 			return -ENOSPC;
 		}
 
-		oi->oi_indirect = allocated[0];
+
 		uint32_t * first_indir_block = ospfs_block((uint32_t)allocated[0]);
-		clear_block(first_indir_block);
-		first_indir_block[0] = allocated[1];
-		clear_block(ospfs_block((uint32_t)allocated[1]));	
+        memset(first_indir_block, 0, OSPFS_BLKSIZE);
+
+
+		uint32_t *new_block = ospfs_block((uint32_t) allocated[1]);
+        memset(new_block, 0, OSPFS_BLKSIZE);
+
+        oi->oi_indirect = allocated[0];
+        oi->oi_indirect[0] = allocated[1];
+
+
 		#if (DEBUG == 1)
         	eprintk("add a block as first block in indirect block\n");
     	#endif
@@ -873,16 +884,22 @@ add_block(ospfs_inode_t *oi)
 
 	//already allocate a indirect block
 
-	else if(indir_index(n) == 0)
+	else if(n > OSPFS_NDIRECT && n < OSPFS_NDIRECT + OSPFS_NINDIRECT)
 	{
 		allocated[0] = allocate_block();
 		if(allocated[0] == 0)
 			return -ENOSPC;
 
+		uint32_t * new_block = ospfs_block(allocated[0]);
+		memset(new_block,0,OSPFS_BLKSIZE);
+		
+
 		uint32_t * first_indir_block = ospfs_block(oi->oi_indirect);
-		uint32_t index = direct_index(n);
+		uint32_t index = n-OSPFS_NDIRECT;
+
 		first_indir_block[index] = allocated[0];
-		clear_block(ospfs_block((uint32_t)allocated[0]));
+
+
 		#if (DEBUG == 1)
         	eprintk("add a block in indirect block\n");
     	#endif
@@ -890,22 +907,35 @@ add_block(ospfs_inode_t *oi)
 
 	//need to add doubly indirect
 
-	else if(indir2_index(n) == 0 && indir_index(n-1) == 0)
+	else if(n == OSPFS_NDIRECT + OSPFS_NINDIRECT)
 	{
 		allocated[0] = allocate_block();
 		allocated[1] = allocate_block();
 
-		if(allocated[1] == 0)
+		uint32_t new_block_no = allocate_block();
+
+		if(new_block_no == 0)
 		{
 			free_block(allocated[0]);
+			free_block(allocated[1]);
 			return -ENOSPC;
 		}
 
+		uint32_t *first_indir_block = ospfs_block(allocated[0]);
+		memset(first_indir_block,0,OSPFS_BLKSIZE);
+
+		uint32_t * second_indir_block = ospfs_block((uint32_t)allocated[1]);
+		memset(second_indir_block,0,OSPFS_BLKSIZE);
+
+		uint32_t * new_block = ospfs_block(new_block_no);
+		memset(new_block,0,OSPFS_BLKSIZE);
+
+
 		oi->oi_indirect2 = allocated[0];
-		uint32_t * second_indir_block = ospfs_block((uint32_t)allocated[0]);
-		clear_block(second_indir_block);
-		second_indir_block[0] = allocated[1];
-		clear_block(ospfs_block((uint32_t)allocated[1]));	
+		*first_indir_block = allocated[1];
+		*second_indir_block = new_block_no;
+
+
 		#if (DEBUG == 1)
         	eprintk("add a block as first block in doubly indirect block\n");
     	#endif
@@ -913,19 +943,50 @@ add_block(ospfs_inode_t *oi)
 
 	//already allocated doubly indirect
 
-	else if( indir2_index(n) == 0)
+	else if( n > OSPFS_NDIRECT + OSPFS_NINDIRECT && n < OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT*OSPFS_NINDIRECT)
 	{
 		allocated[0] = allocate_block();
 		if(allocated[0] == 0)
 			return -ENOSPC;
 
-		uint32_t * second_indir_block = ospfs_block(oi->oi_indirect2);
-		uint32_t index = indir_index(n);
-		second_indir_block[index] = allocated[0];
-		clear_block(ospfs_block((uint32_t)allocated[0]));
+
+		if((n - OSPFS_NDIRECT) % OSPFS_NINDIRECT == 0)
+		{	
+
+			uint32_t new_block_no = allocate_block();
+			if(new_block_no == 0)
+			{
+				free_block(allocated[0]);
+				return -ENOSPC;
+			}
+
+			uint32_t * new_indir_block = ospfs_block(allocated[0]);
+			memset(new_indir_block, 0, OSPFS_BLKSIZE);
+
+			*new_indir_block = new_block_no;
+
+			uint32_t*indirect_block = ospfs_block(oi->oi_indirect2);
+			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) /256;
+
+			indirect_block[index] = allocated[0];
+
+
+			
 		#if (DEBUG == 1)
         	eprintk("add a block in doubly indirect block\n");
     	#endif
+
+        	
+        } else {
+            uint32_t* indirect_block = ospfs_block(oi->oi_indirect2);
+            uint32_t indirect_block2_no = indirect_block[(n - 266) / 256];
+
+            uint32_t* indirect_block2 = ospfs_block(indirect_block2_no);
+			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) %256;
+
+            indirect_block2[(n - 266) % 256] = allocated[0];
+            memset(ospfs_block(allocated[0]),0,OSPFS_BLKSIZE);
+        }
 	}
 
 
