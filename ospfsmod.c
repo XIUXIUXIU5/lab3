@@ -873,7 +873,7 @@ add_block(ospfs_inode_t *oi)
         memset(new_block, 0, OSPFS_BLKSIZE);
 
         oi->oi_indirect = allocated[0];
-        oi->oi_indirect[0] = allocated[1];
+        *first_indir_block = allocated[1];
 
 
 		#if (DEBUG == 1)
