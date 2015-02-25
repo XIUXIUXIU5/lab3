@@ -1317,13 +1317,12 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	}
 
 	if(change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE) < 0)
-		return ERR_PTR(-EINVAL)
+		return ERR_PTR(-EINVAL);
 
 	new_dir = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
 
 	new_dir->od_ino = 0;
-	new_dir->od_name = "";
-
+	
 	return new_dir; // Replace this line
 }
 
