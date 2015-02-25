@@ -520,7 +520,9 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
       			case OSPFS_FTYPE_SYMLINK:
      				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_LNK);
 					break;
-    		 	default:d_type = -1;
+
+    		 	default:
+    		 		break;
       }       
 
        if (ok_so_far >= 0)
