@@ -1114,7 +1114,7 @@ remove_block(ospfs_inode_t *oi)
 	else 
 		return -EIO;
 	if(n <= 1)
-		oi_size = 0;
+		oi->oi_size = 0;
 	else
 		oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
 
