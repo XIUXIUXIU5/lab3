@@ -469,11 +469,10 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-        if ((f_pos-2) * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) 
-        	//is it supposed to me f_pos-2 ?
-        {
+        if ((f_pos - 2) * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) {
             #if (DEBUG == 1)
                 eprintk("End of the entry, exit the loop\n");
+                eprintk("%d of files in the directory \n", f_pos-2);
             #endif
             r = 1;
             break;
@@ -500,9 +499,12 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
-        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, (f_pos-2) * OSPFS_DIRENTRY_SIZE);//is it supposed to be f_pos-2
+        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, (f_pos - 2)* OSPFS_DIRENTRY_SIZE);
         //if inode number is zero, ignore it and continue
         if (od -> od_ino == 0) {
+        #if (DEBUG == 1)
+            eprintk("od_ino of %s is 0, skip this entry\n", od->od_name);
+        #endif
             f_pos++;
             continue;
         }
@@ -564,6 +566,7 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 	oi->oi_nlink--;
 	return 0;
 }
+
 
 
 
@@ -1014,6 +1017,9 @@ ospfs_notify_change(struct dentry *dentry, struct iattr *attr)
 static ssize_t
 ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 {
+    #if DEBUG == 1
+        eprintk("Enter ospfs_read\n");
+    #endif
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
@@ -1021,7 +1027,12 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
 	/* EXERCISE: Your code here */
-
+    if (count + *f_pos > oi->oi_size) {
+        #if DEBUG == 1
+            eprintk("count will go beyond file, reset count\n");
+        #endif
+        count = oi->oi_size - *f_pos;
+    }
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
@@ -1041,8 +1052,20 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+        if (amount + OSPFS_BLKSIZE > count) {
+            n = count - amount;
+        }
+        else {
+            n = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
+        }
+        
+        if (copy_to_user(buffer, data+*f_pos % OSPFS_BLKSIZE, n) != 0) {
+            #if DEBUG == 1
+                eprintk("copy to user fail \n");
+            #endif
+            retval = -EIO; // Replace these lines
+            goto done;
+        }
 
 		buffer += n;
 		amount += n;
@@ -1074,6 +1097,9 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
 {
+    #if DEBUG == 1
+        eprintk("Enter ospfs_write \n");
+    #endif
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
@@ -1081,10 +1107,24 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
 	/* EXERCISE: Your code here */
+    if (filp->f_flags & O_APPEND) {
+        #if DEBUG == 1
+            eprintk("O_APPEND is set \n");
+        #endif
+        *f_pos = oi->oi_size;
+    }
+    
 
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
+    if (count + *f_pos > oi->oi_size) {
+        #if DEBUG == 1
+            eprintk("Write beyongd the file, change file size \n");
+        #endif
+        if((retval = change_size(oi, count + *f_pos)) < 0)
+            goto done;
+    }
 
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
@@ -1104,8 +1144,21 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		// read user space.
 		// Keep track of the number of bytes moved in 'n'.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+        if (amount + OSPFS_BLKSIZE > count) {
+            n = count - amount;
+        }
+        else {
+            n = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
+        }
+        
+        if (copy_from_user(data + *f_pos%OSPFS_BLKSIZE, buffer, n) != 0) {
+            #if DEBUG == 1
+                eprintk("copy from user fail \n");
+            #endif
+            retval = -EIO; // Replace these lines
+            goto done;
+        }
+
 
 		buffer += n;
 		amount += n;
