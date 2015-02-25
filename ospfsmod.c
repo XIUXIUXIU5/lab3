@@ -1571,7 +1571,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	if(dentry->d_name.len > OSPFS_MAXNAMELEN || strlen(symname) > OSPFS_MAXSYMLINKLEN)
 		return -ENAMETOOLONG;
 
-	if(find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.length) != NULL)
+	if(find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.len) != NULL)
 		return -EEXIST;
 
 	ospfs_direntry_t *newsym_direntry = create_blank_direntry(dir_oi);
@@ -1587,7 +1587,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	newsym_direntry->od_ino = newsym_ino;
 	strcpy(newsym_direntry->od_name, dentry->d_name.name);
 
-	ospfs_symlink *newsym_oi = ospfs_inode(newsym_ino);
+	ospfs_symlink_inode_t *newsym_oi = ospfs_inode(newsym_ino);
 
 	newsym_oi->oi_size = strlen(symname)+1;
 	newsym_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
