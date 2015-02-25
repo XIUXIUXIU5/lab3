@@ -1217,10 +1217,10 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
             n = count - amount;
         }
         else {
-            n = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
+            n = OSPFS_BLKSIZE - ((*f_pos) % OSPFS_BLKSIZE);
         }
         
-        if (copy_from_user(data + *f_pos%OSPFS_BLKSIZE, buffer, n) != 0) {
+        if (copy_from_user(data + (*f_pos)%OSPFS_BLKSIZE, buffer, n) != 0) {
             #if DEBUG == 1
                 eprintk("copy from user fail \n");
             #endif
@@ -1322,7 +1322,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	new_dir = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
 
 	new_dir->od_ino = 0;
-	
+
 	return new_dir; // Replace this line
 }
 
