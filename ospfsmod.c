@@ -1367,7 +1367,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 		return -ENOSPC;
 	}
 
-	if(find_direntry(ospfs_inode_t *dir_oi, dst_dentry->d_name.name, dentry->d_name.len) != NULL)
+	if(find_direntry(ospfs_inode(dir->i_ino), dst_dentry->d_name.name, dentry->d_name.len) != NULL)
 		return -EEXIST;
 
 	 if (dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
@@ -1385,13 +1385,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	 return 0;
 
-)
 
-
-
-
-
-	return -EINVAL;
 }
 
 // ospfs_create
