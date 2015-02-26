@@ -1593,28 +1593,32 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
+	/* EXERCISE: Your code here. */
 
-    ospfs_inode_t* dst_dir_oi = ospfs_inode(dir->i_ino);
-    ospfs_inode_t* src_oi = ospfs_inode(src_dentry->d_inode->i_ino);
+	ospfs_direntry_t* new_dir = create_blank_direntry(ospfs_inode(dir->i_ino));
 
-    if (!src_oi)
-        return -EIO;
+	if(IS_ERR(new_dir))
+		return -ENOSPC;
 
-    if (find_direntry(dst_dir_oi, dst_dentry->d_name.name, dst_dentry->d_name.len))
-        return -EEXIST;
+	ospfs_direntry_t* dir_oi = ospfs_inode(dir->i_ino);
 
-    ospfs_direntry_t* dirEntry = create_blank_direntry(dst_dir_oi);
+	if(find_direntry(dir_oi, dst_dentry->d_name.name, dst_dentry->d_name.len) != NULL)
+		return -EEXIST;
 
-    if (IS_ERR(dirEntry))
-        return PTR_ERR(dirEntry);
+	 if (dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
+	 	return -ENAMETOOLONG;
 
-    memcpy(dirEntry->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
-    dirEntry->od_ino = src_dentry->d_inode->i_ino;
-    dirEntry->od_name[dst_dentry->d_name.len] = '\0';
+	 ospfs_inode_t* src_inode = ospfs_inode(src_dentry->d_inode->i_ino);
 
-    src_oi->oi_nlink++;
+	 src_inode->oi_nlink++;
 
-    return 0;
+	 new_dir->od_ino = src_dentry->d_inode->i_ino;
+
+	 strcpy(new_dir->od_name, dst_dentry->d_name.name);
+
+	 return 0;
+
+
 }
 
 // ospfs_create
