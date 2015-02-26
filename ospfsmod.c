@@ -1567,10 +1567,10 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 		if (retval != 0)
 			return ERR_PTR(retval); 
 
-		uint32_t* indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
-		uint32_t index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT)/OSPFS_NINDIRECT;
-		uint32_t* indirect_block2_block = ospfs_block(indirect_block2[index]);
-		uint32_t index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
+		 indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
+		 index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT)/OSPFS_NINDIRECT;
+		 indirect_block2_block = ospfs_block(indirect_block2[index]);
+		 index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
 		block_direntry = ospfs_block(indirect_block2_block[index2]);
 
 		return block_direntry[0];
