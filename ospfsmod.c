@@ -1679,6 +1679,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	new_direntry->od_ino = newfile_ino;
 	strcpy(new_direntry->od_name, dentry->d_name.name);
+	new_direntry->od_name[dentry->d_name.len] = '\0';
+
 
 
 	ospfs_inode_t* newfile_oi = ospfs_inode(newfile_ino);
