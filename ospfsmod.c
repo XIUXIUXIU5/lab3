@@ -1653,61 +1653,48 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
-	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
-	uint32_t entry_ino = 0;
-	/* EXERCISE: Your code here. */
-	// Replace this line
+  ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
+  ospfs_direntry_t *elm_dirent;
+  ospfs_inode_t *elm_ino;
+  uint32_t entry_ino = 0;
+  eprintk("ospfs_create\n");
+  if (find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.len)!=NULL)
+    {
+      printk("Name exists\n");
+      return -EEXIST;// Direntry already exists in dir
+    }
 
-	/* Execute this code after your function has successfully created the
-	   file.  Set entry_ino to the created file's inode number before
-	   getting here. */
+  entry_ino = allocate_inode();// Find an empty inode, if exists
+  if (entry_ino == -ENOSPC)
+    return -ENOSPC;
 
-	if(dentry->d_name.len > OSPFS_MAXNAMELEN)
-	 		return -ENAMETOOLONG;
+  elm_dirent = create_blank_direntry(dir_oi);
+  if (IS_ERR(elm_dirent))
+    return -ENOSPC;// Directory is full
 
- 	if (find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.len)!=NULL)
- 	 		return -EEXIST;
+  // If name not too long, copy into direntry
+  if (dentry->d_name.len >= OSPFS_MAXNAMELEN)
+    return -ENAMETOOLONG;
+  strcpy(elm_dirent->od_name, dentry->d_name.name);
 
-	ospfs_direntry_t* new_direntry = create_blank_direntry(dir_oi);
+  elm_ino = ospfs_inode(entry_ino);// Get the inode just allocated
+  elm_ino->oi_mode = mode;
+  elm_ino->oi_ftype = OSPFS_FTYPE_REG;
+  elm_ino->oi_nlink++;// Increment link count
 
-	if(IS_ERR(new_direntry))
-		return PTR_ERR(new_direntry);
-
-	uint32_t newfile_ino = allocate_inode();
-	if(newfile_ino == -ENOSPC)
-		return -ENOSPC;
-
-	new_direntry->od_ino = newfile_ino;
-	strcpy(new_direntry->od_name, dentry->d_name.name);
-	new_direntry->od_name[dentry->d_name.len] = '\0';
-
-
-
-	ospfs_inode_t* newfile_oi = ospfs_inode(newfile_ino);
-
-	newfile_oi->oi_size = 0;
-	newfile_oi->oi_ftype = OSPFS_FTYPE_REG;
-	newfile_oi->oi_nlink = 1;
-	newfile_oi->oi_mode = mode;
-
-	newfile_oi->oi_indirect = 0;
-	newfile_oi->oi_indirect2 = 0;
-	int i = 0;
-	for(; i < OSPFS_NDIRECT; i++)
-	{
-		newfile_oi->oi_direct[i] = 0;
-	}
-
-
-	{
-		struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
-		if (!i)
-			return -ENOMEM;
-		d_instantiate(dentry, i);
-		return 0;
-	}
+  elm_dirent->od_ino = entry_ino;
+  eprintk("INODE: %d NAME: %s\n",elm_dirent->od_ino,elm_dirent->od_name);
+  /* Execute this code after your function has successfully created the
+        file.  Set entry_ino to the created file's inode number before
+	getting here. */
+  {
+    struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
+    if (!i)
+      return -ENOMEM;
+    d_instantiate(dentry, i);
+    return 0;
+  }
 }
-
 
 
 // ospfs_symlink(dirino, dentry, symname)
