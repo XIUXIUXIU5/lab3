@@ -983,7 +983,7 @@ add_block(ospfs_inode_t *oi)
 			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) %OSPFS_NINDIRECT;
 
             indirect_block2[(n - OSPFS_NDIRECT - OSPFS_NINDIRECT) % OSPFS_NINDIRECT] = allocated[0];
-            
+
             memset(ospfs_block(allocated[0]),0,OSPFS_BLKSIZE);
         }
 	}
@@ -1620,6 +1620,9 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	ospfs_direntry_t* new_dir = create_blank_direntry(ospfs_inode(dir->i_ino));
 
+    if (!src_oi)
+        return -EIO;
+
 	if(IS_ERR(new_dir))
 		return -ENOSPC;
 
@@ -1760,6 +1763,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
+  	char* temp;
 
 	/* EXERCISE: Your code here. */
 
@@ -1787,8 +1791,19 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	newsym_oi->oi_size = strlen(symname)+1;
 	newsym_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
 	newsym_oi->oi_nlink = 1;
+	
 
-    strcpy(newsym_oi->oi_symlink, symname);
+
+	if ((temp = strstr(symname, "root?")))
+    	{
+      	symlink_oi->oi_symlink[0] = '?';
+      	strcpy(symlink_oi->oi_symlink+1, temp+5);
+      	temp = strchr(symlink_oi->oi_symlink,':');
+      	*temp = 0;
+   	 }
+  	else
+   		 strcpy(symlink_oi->oi_symlink, symname);
+
 
 
 	/* Execute this code after your function has successfully created the
