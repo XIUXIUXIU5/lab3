@@ -1460,10 +1460,10 @@ find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen)
 //		...
 //	}
 //
-//	The create_blank_direntry function should use this convention.
+//	The create_blank_direntry fun      ction should use this convention.
 //
 // EXERCISE: Write this function.
-/*
+
 static ospfs_direntry_t *
 create_blank_direntry(ospfs_inode_t *dir_oi)
 {
@@ -1474,7 +1474,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    Use ERR_PTR if this fails; otherwise, clear out all the directory
 	//    entries and return one of them.
 
-	/* EXERCISE: Your code here. *//*
+	/* EXERCISE: Your code here. */
 
 	ospfs_direntry_t* new_dir;
 
@@ -1524,7 +1524,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 				{
 				return block_direntry[j];
 				}
-		}
+			}
 
 		uint32_t retval = change_size(dir_oi, dir_oi->oi_size + OSPFS_BLKSIZE);
 
@@ -1546,87 +1546,43 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 	}
 
-
+	//if it is in doubly indirect block
 	else if(blockno <= OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT*OSPFS_NINDIRECT)
 	{
 		uint32_t* indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
+		uint32_t index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT-1)/OSPFS_NINDIRECT;
+		uint32_t* indirect_block2_block = ospfs_block(indirect_block2[index]);
+		uint32_t index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT;
+		block_direntry = ospfs_block(indirect_block2_block[index2]);
 
+		for(j = 0; j < OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE; j++)
+			{
+				if (block_direntry[j].inode == 0)
+				{
+				return block_direntry[j];
+				}
+			}
+		uint32_t retval = change_size(dir_oi, dir_oi->oi_size + OSPFS_BLKSIZE);
 
+		if (retval != 0)
+			return ERR_PTR(retval); 
+
+		uint32_t* indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
+		uint32_t index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT)/OSPFS_NINDIRECT;
+		uint32_t* indirect_block2_block = ospfs_block(indirect_block2[index]);
+		uint32_t index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
+		block_direntry = ospfs_block(indirect_block2_block[index2]);
+
+		return block_direntry[0];
 	}
 
 	
-	
+	else
+		return ERR_PTR(-ENOSPC);
 
-
-	return new_dir; // Replace this line
 }
-*/
 
 
-
-static ospfs_direntry_t *
-create_blank_direntry(ospfs_inode_t *dir_oi)
-{
-    // Outline:
-    // 1. Check the existing directory data for an empty entry.  Return one
-    //    if you find it.
-    // 2. If there's no empty entries, add a block to the directory.
-    //    Use ERR_PTR if this fails; otherwise, clear out all the directory
-    //    entries and return one of them.
-
-    ospfs_direntry_t* emptyEntry = NULL;
-
-    int blkIdx = 0;
-
-    while (blkIdx < OSPFS_MAXFILEBLKS && !emptyEntry) {
-        int blkNum;
-        if (blkIdx <= 9) {
-            if (dir_oi->oi_direct[blkIdx] == 0 && add_block(dir_oi) < 0)
-                return ERR_PTR(-EIO);
-
-            blkNum = dir_oi->oi_direct[blkIdx];
-        }
-        else if (blkIdx >= 10 && blkIdx <= 265) { 
-            if (dir_oi->oi_indirect == 0 && add_block(dir_oi) < 0)
-                return ERR_PTR(-EIO);
-
-            uint32_t* indirectDataL1 = ospfs_block(dir_oi->oi_indirect);
-            blkNum = indirectDataL1[blkIdx - 10];
-        }
-        else {
-            if (dir_oi->oi_indirect2 == 0 && add_block(dir_oi) < 0)
-                return ERR_PTR(-EIO);
-            else { 
-                uint32_t* indirectDataL1 = ospfs_block(dir_oi->oi_indirect2);
-                if (indirectDataL1[(blkIdx - 266) / 256] == 0 && add_block(dir_oi) < 0)
-                    return ERR_PTR(-EIO);
-            }
-            uint32_t* indirectDataL1 = ospfs_block(dir_oi->oi_indirect2);
-            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(blkIdx - 266) / 256]);
-            blkNum = indirectDataL2[(blkIdx - 266) % 256];
-        }
-
-        ospfs_direntry_t* direntries = ospfs_block(blkNum);
-
-        int i;
-        for (i = 0; i < OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE; i++) {
-            if (direntries[i].od_ino == 0) {
-                emptyEntry = &direntries[i];
-                break; 
-            }
-        }
-
-        if (emptyEntry)
-            break; 
-
-        blkIdx++; 
-    }
-
-    if (blkIdx == OSPFS_MAXFILEBLKS)
-        return ERR_PTR(-ENOSPC);
-
-    return emptyEntry;
-}
 
 // ospfs_link(src_dentry, dir, dst_dentry
 //   Linux calls this function to create hard links.
