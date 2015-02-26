@@ -968,7 +968,7 @@ add_block(ospfs_inode_t *oi)
 			uint32_t*indirect_block = ospfs_block(oi->oi_indirect2);
 			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) /256;
 
-			indirect_block[index] = new_block_no;
+			indirect_block[index] = allocated[0];
 
 
 			
