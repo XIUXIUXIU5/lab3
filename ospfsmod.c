@@ -964,7 +964,7 @@ add_block(ospfs_inode_t *oi)
 			*new_indir_block = new_block_no;
 
 			uint32_t*indirect_block = ospfs_block(oi->oi_indirect2);
-			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) /256;
+			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) /OSPFS_NINDIRECT;
 
 			indirect_block[index] = allocated[0];
 
@@ -977,12 +977,13 @@ add_block(ospfs_inode_t *oi)
         	
         } else {
             uint32_t* indirect_block = ospfs_block(oi->oi_indirect2);
-            uint32_t indirect_block2_no = indirect_block[(n - 266) / 256];
+            uint32_t indirect_block2_no = indirect_block[(n - OSPFS_NDIRECT - OSPFS_NINDIRECT) / OSPFS_NINDIRECT];
 
             uint32_t* indirect_block2 = ospfs_block(indirect_block2_no);
-			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) %256;
+			uint32_t index = (n - OSPFS_NDIRECT - OSPFS_NINDIRECT) %OSPFS_NINDIRECT;
 
-            indirect_block2[(n - 266) % 256] = allocated[0];
+            indirect_block2[(n - OSPFS_NDIRECT - OSPFS_NINDIRECT) % OSPFS_NINDIRECT] = allocated[0];
+            
             memset(ospfs_block(allocated[0]),0,OSPFS_BLKSIZE);
         }
 	}
