@@ -695,49 +695,123 @@ free_block(uint32_t blockno)
 //
 // EXERCISE: Fill in this function.
 
+
 static int32_t
 indir2_index(uint32_t b)
 {
-    // Your code here.
-    return -1;
+	// Your code here.
+	if(b >= OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
+	return -1;
 }
 
 
 // int32_t indir_index(uint32_t b)
-//  Returns the indirect block index for file block b.
+//	Returns the indirect block index for file block b.
 //
 // Inputs:  b -- the zero-based index of the file block
 // Returns: -1 if b is one of the file's direct blocks;
-//      0 if b is located under the file's first indirect block;
-//      otherwise, the offset of the relevant indirect block within
-//      the doubly indirect block.
+//	    0 if b is located under the file's first indirect block;
+//	    otherwise, the offset of the relevant indirect block within
+//		the doubly indirect block.
 //
 // EXERCISE: Fill in this function.
 
 static int32_t
 indir_index(uint32_t b)
 {
-    // Your code here.
-    return -1;
+	// Your code here.
+	if( b < OSPFS_NDIRECT)
+		return -1;
+	else if ( b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
+
+	return (b - OSPFS_NDIRECT - OSPFS_NINDIRECT);
 }
 
 
 // int32_t indir_index(uint32_t b)
-//  Returns the indirect block index for file block b.
+//	Returns the indirect block index for file block b.
 //
 // Inputs:  b -- the zero-based index of the file block
 // Returns: the index of block b in the relevant indirect block or the direct
-//      block array.
+//	    block array.
 //
 // EXERCISE: Fill in this function.
 
 static int32_t
 direct_index(uint32_t b)
 {
-    // Your code here.
-    return -1;
+	// Your code here.
+	if(b < OSPFS_NDIRECT)
+		return b;
+
+	return (b - OSPFS_NDIRECT) % OSPFS_NINDIRECT;
 }
 
+
+// add_block(ospfs_inode_t *oi)
+//   Adds a single data block to a file, adding indirect and
+//   doubly-indirect blocks if necessary. (Helper function for
+//   change_size).
+//
+// Inputs: oi -- pointer to the file we want to grow
+// Returns: 0 if successful, < 0 on error.  Specifically:
+//          -ENOSPC if you are unable to allocate a block
+//          due to the disk being full or
+//          -EIO for any other error.
+//          If the function is successful, then oi->oi_size
+//          should be set to the maximum file size in bytes that could
+//          fit in oi's data blocks.  If the function returns an error,
+//          then oi->oi_size should remain unchanged. Any newly
+//          allocated blocks should be erased (set to zero).
+//
+// EXERCISE: Finish off this function.
+//
+// Remember that allocating a new data block may require allocating
+// as many as three disk blocks, depending on whether a new indirect
+// block and/or a new indirect^2 block is required. If the function
+// fails with -ENOSPC or -EIO, then you need to make sure that you
+// free any indirect (or indirect^2) blocks you may have allocated!
+//
+// Also, make sure you:
+//  1) zero out any new blocks that you allocate
+//  2) store the disk block number of any newly allocated block
+//     in the appropriate place in the inode or one of the
+//     indirect blocks.
+//  3) update the oi->oi_size field
+
+static void
+clear_block(uint32_t* block)
+{
+	int i = 0;
+	for(; i < OSPFS_BLKSIZE/4; i++)
+		block[i] = 0;
+}
+
+
+uint32_t
+allocate_inode(void) {
+  
+  uint32_t ino = 0;// Offset within inode data blocks
+  ospfs_inode_t *inode;
+	#if (DEBUG == 1)
+       	eprintk("allocate new inode\n");
+   	#endif  
+
+  while (ino < ospfs_super->os_ninodes) {
+
+    inode = (ospfs_inode_t *) ospfs_inode(ino);
+
+    if (inode->oi_nlink == 0) {
+      memset(inode, 0, OSPFS_INODESIZE);// Set all prev data to 0
+      return ino;// Return inode number
+
+    }
+    ino++;
+  }
+  return -ENOSPC;
+}
 
 // add_block(ospfs_inode_t *oi)
 //   Adds a single data block to a file, adding indirect and
