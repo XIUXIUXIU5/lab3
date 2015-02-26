@@ -1469,20 +1469,17 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 			}
 			return -ENOSPC;
 		}
-		return 0; // Replace this line
 	}
 
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
-		if(remove_block(oi) < 0)
+		if(remove_block(oi))
 		{
 			while(ospfs_size2nblocks(oi->oi_size) < old_size)
 				add_block(oi);
 			return -ENOSPC;
 		}
-		#if (DEBUG == 1)
-        	eprintk("remove block to shrink the size\n");
-    	#endif
+	
 		return -EIO; // Replace this line
 	}
 
