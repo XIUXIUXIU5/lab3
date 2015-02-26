@@ -1487,7 +1487,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
-	             and return the proper value. *//*
+	             and return the proper value. */
 
 	oi->oi_size = new_size;
 	return 0; // Replace this line
