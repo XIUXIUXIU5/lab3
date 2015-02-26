@@ -949,157 +949,6 @@ add_block(ospfs_inode_t *oi)
 }
 
 
-// remove_block(ospfs_inode_t *oi)
-//   Removes a single data block from the end of a file, freeing
-//   any indirect and indirect^2 blocks that are no
-//   longer needed. (Helper function for change_size)
-//
-// Inputs: oi -- pointer to the file we want to shrink
-// Returns: 0 if successful, < 0 on error.
-//          If the function is successful, then oi->oi_size
-//          should be set to the maximum file size that could
-//          fit in oi's blocks.  If the function returns -EIO (for
-//          instance if an indirect block that should be there isn't),
-//          then oi->oi_size should remain unchanged.
-//
-// EXERCISE: Finish off this function.
-//
-// Remember that you must free any indirect and doubly-indirect blocks
-// that are no longer necessary after shrinking the file.  Removing a
-// single data block could result in as many as 3 disk blocks being
-// deallocated.  Also, if you free a block, make sure that
-// you set the block pointer to 0.  Don't leave pointers to
-// deallocated blocks laying around!
-
-static int
-remove_block(ospfs_inode_t *oi)
-{
-    // current number of blocks in file
-    uint32_t n = ospfs_size2nblocks(oi->oi_size);
-
-    if (n == 0)
-        return -EIO;
-    
-    if (n <= 10) {
-        free_block(oi->oi_direct[n-1]);
-        oi->oi_direct[n-1] = 0;
-    }
-    else if (n == 11) {
-        uint32_t* indirectData = ospfs_block(oi->oi_indirect);
-
-        free_block(indirectData[0]);
-        free_block(oi->oi_indirect);
-
-        indirectData[0] = 0;
-        oi->oi_indirect = 0;
-    }
-    else if (n > 11 && n <=266) {
-        uint32_t* indirectData = ospfs_block(oi->oi_indirect);
-
-        free_block(indirectData[n-11]);
-
-        indirectData[n-11] = 0;
-    } 
-    else if (n == 267) {
-        uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-        uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[0]);
-
-        free_block(indirectDataL2[0]);
-        free_block(indirectDataL1[0]);
-        free_block(oi->oi_indirect2);
-
-        indirectDataL2[0] = 0;
-        indirectDataL1[0] = 0;
-        oi->oi_indirect2 = 0;
-    }
-    else if (n > 267 && n <= 65802) {
-        if ((n - 11) % 256 == 0) {
-            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - 267) / 256]);
-
-            free_block(indirectDataL2[0]);
-            free_block(indirectDataL1[(n - 267) / 256]);
-
-            indirectDataL2[0] = 0;
-            indirectDataL1[(n - 267) / 256] = 0;
-
-        } else {
-            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - 267) / 256]);
-
-            free_block(indirectDataL2[(n - 267) % 256]);
-
-            indirectDataL2[(n - 267) % 256] = 0;
-        }
-    }
-
-    oi->oi_size -= 1024 < oi->oi_size ? 1024 : oi->oi_size;
-    return 0;
-}
-
-
-// change_size(oi, want_size)
-//  Use this function to change a file's size, allocating and freeing
-//  blocks as necessary.
-//
-//   Inputs:  oi    -- pointer to the file whose size we're changing
-//        want_size -- the requested size in bytes
-//   Returns: 0 on success, < 0 on error.  In particular:
-//      -ENOSPC: if there are no free blocks available
-//      -EIO:    an I/O error -- for example an indirect block should
-//           exist, but doesn't
-//        If the function succeeds, the file's oi_size member should be
-//        changed to want_size, with blocks allocated as appropriate.
-//        Any newly-allocated blocks should be erased (set to 0).
-//        If there is an -ENOSPC error when growing a file,
-//        the file size and allocated blocks should not change from their
-//        original values!!!
-//            (However, if there is an -EIO error, do not worry too much about
-//        restoring the file.)
-//
-//   If want_size has the same number of blocks as the current file, life
-//   is good -- the function is pretty easy.  But the function might have
-//   to add or remove blocks.
-//
-//   If you need to grow the file, then do so by adding one block at a time
-//   using the add_block function you coded above. If one of these additions
-//   fails with -ENOSPC, you must shrink the file back to its original size!
-//
-//   If you need to shrink the file, remove blocks from the end of
-//   the file one at a time using the remove_block function you coded above.
-//
-//   Also: Don't forget to change the size field in the metadata of the file.
-//         (The value that the final add_block or remove_block set it to
-//          is probably not correct).
-//
-//   EXERCISE: Finish off this function.
-/*
-static int
-change_size(ospfs_inode_t *oi, uint32_t new_size)
-{
-    uint32_t old_size = oi->oi_size;
-    int r = 0;
-
-    while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-        if (add_block(oi) < 0) {
-            while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(old_size)) {
-                remove_block(oi);
-            }
-            return -ENOSPC;
-        }
-    }
-    while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-        if (remove_block(oi)) {
-            while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(old_size)) {
-                add_block(oi);
-            }
-            return -ENOSPC;
-        }
-    }
-    oi->oi_size = new_size;
-    return 0;
-}
-*/
 
 /*
 static int
@@ -1281,7 +1130,7 @@ add_block(ospfs_inode_t *oi)
 	  return 0;
 }
 
-
+*/
 // remove_block(ospfs_inode_t *oi)
 //   Removes a single data block from the end of a file, freeing
 //   any indirect and indirect^2 blocks that are no
@@ -1315,7 +1164,7 @@ remove_block(ospfs_inode_t *oi)
 
 
 	//if it is in the direct block
-	/*
+	
 	if(n <= OSPFS_NDIRECT)
 	{
 		uint32_t freeblock = oi->oi_direct[n-1];
@@ -1445,7 +1294,7 @@ remove_block(ospfs_inode_t *oi)
 //          is probably not correct).
 //
 //   EXERCISE: Finish off this function.
-*/
+
 static int
 change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
