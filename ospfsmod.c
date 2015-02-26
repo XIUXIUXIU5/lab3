@@ -1285,53 +1285,66 @@ ospfs_notify_change(struct dentry *dentry, struct iattr *attr)
 static ssize_t
 ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 {
-    ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
-    int retval = 0;
-    size_t amount = 0;
+    #if DEBUG == 1
+        eprintk("Enter ospfs_read\n");
+    #endif
+	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
+	int retval = 0;
+	size_t amount = 0;
 
-    // Make sure we don't read past the end of the file!
-    // Change 'count' so we never read past the end of the file.
-    /* EXERCISE: Your code here */
-
-    if (count + *f_pos > oi->oi_size)
+	// Make sure we don't read past the end of the file!
+	// Change 'count' so we never read past the end of the file.
+	/* EXERCISE: Your code here */
+    if (count + *f_pos > oi->oi_size) {
+        #if DEBUG == 1
+            eprintk("count will go beyond file, reset count\n");
+        #endif
         count = oi->oi_size - *f_pos;
-
-    // Copy the data to user block by block
-    while (amount < count && retval >= 0) {
-        uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
-        uint32_t n;
-        char *data;
-
-        // ospfs_inode_blockno returns 0 on error
-        if (blockno == 0) {
-            retval = -EIO;
-            goto done;
-        }
-
-        data = ospfs_inode_data(oi, *f_pos);
-
-        // Figure out how much data is left in this block to read.
-        // Copy data into user space. Return -EFAULT if unable to write
-        // into user space.
-        // Use variable 'n' to track number of bytes moved.
-        /* EXERCISE: Your code here */
-
-        int bytesLeftInBlk = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
-
-        n = (count - amount) > bytesLeftInBlk ? bytesLeftInBlk : count - amount; 
-        
-        if (copy_to_user(buffer, data, n) != 0) {
-            retval = -EFAULT;
-            goto done;
-        }
-
-        buffer += n;
-        amount += n;
-        *f_pos += n;
     }
+	// Copy the data to user block by block
+	while (amount < count && retval >= 0) {
+		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
+		uint32_t n;
+		char *data;
+
+		// ospfs_inode_blockno returns 0 on error
+		if (blockno == 0) {
+			retval = -EIO;
+			goto done;
+		}
+
+		data = ospfs_block(blockno);
+
+		// Figure out how much data is left in this block to read.
+		// Copy data into user space. Return -EFAULT if unable to write
+		// into user space.
+		// Use variable 'n' to track number of bytes moved.
+		/* EXERCISE: Your code here */
+		    uint32_t remain = count - amount;
+    	
+    	if (remain > (OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE)))
+            n = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
+
+
+        else 
+            n = count - amount;
+       
+        
+        if (copy_to_user(buffer, data+*f_pos % OSPFS_BLKSIZE, n) != 0) {
+            #if DEBUG == 1
+                eprintk("copy to user fail \n");
+            #endif
+            retval = -EIO; // Replace these lines
+            goto done;
+        }
+
+		buffer += n;
+		amount += n;
+		*f_pos += n;
+	}
 
     done:
-    return (retval >= 0 ? amount : retval);
+	return (retval >= 0 ? amount : retval);
 }
 
 
