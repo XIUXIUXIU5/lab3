@@ -424,105 +424,121 @@ ospfs_dir_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *ign
 static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
-    struct inode *dir_inode = filp->f_dentry->d_inode;
-    ospfs_inode_t *dir_oi = ospfs_inode(dir_inode->i_ino);
-    uint32_t f_pos = filp->f_pos;
-    int r = 0;      /* Error return value, if any */
-    int ok_so_far = 0;  /* Return value from 'filldir' */
+    #if (DEBUG == 1)
+        eprintk("Enter ospfs_dir_readdir \n");
+    #endif
+    
+	struct inode *dir_inode = filp->f_dentry->d_inode;
+	ospfs_inode_t *dir_oi = ospfs_inode(dir_inode->i_ino);
+	uint32_t f_pos = filp->f_pos;
+	int r = 0;		/* Error return value, if any */
+	int ok_so_far = 0;	/* Return value from 'filldir' */
 
-    // f_pos is an offset into the directory's data, plus two.
-    // The "plus two" is to account for "." and "..".
-    if (r == 0 && f_pos == 0) {
-        ok_so_far = filldir(dirent, ".", 1, f_pos, dir_inode->i_ino, DT_DIR);
-        if (ok_so_far >= 0)
-            f_pos++;
-    }
+	// f_pos is an offset into the directory's data, plus two.
+	// The "plus two" is to account for "." and "..".
+	if (r == 0 && f_pos == 0) {
+		ok_so_far = filldir(dirent, ".", 1, f_pos, dir_inode->i_ino, DT_DIR);
+		if (ok_so_far >= 0)
+			f_pos++;
+        else {
+            filp->f_pos = f_pos;
+            return 0;
+        }
+	}
 
-    if (r == 0 && ok_so_far >= 0 && f_pos == 1) {
-        ok_so_far = filldir(dirent, "..", 2, f_pos, filp->f_dentry->d_parent->d_inode->i_ino, DT_DIR);
-        if (ok_so_far >= 0)
-            f_pos++;
-    }
+	if (r == 0 && ok_so_far >= 0 && f_pos == 1) {
+		ok_so_far = filldir(dirent, "..", 2, f_pos, filp->f_dentry->d_parent->d_inode->i_ino, DT_DIR);
+		if (ok_so_far >= 0)
+			f_pos++;
+        else {
+            filp->f_pos = f_pos;
+            return 0;
+        }
+	}
 
-    // actual entries
-    while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
-        ospfs_direntry_t *od;
-        ospfs_inode_t *entry_oi;
+    #if (DEBUG == 1)
+        eprintk("Preapre to go into the loop of entires\n");
+    #endif
+	// actual entries
+	while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
+		ospfs_direntry_t *od;
+		ospfs_inode_t *entry_oi;
 
-        /* If at the end of the directory, set 'r' to 1 and exit
-         * the loop.  For now we do this all the time.
-         *
-         * EXERCISE: Your code here */
-        if ((f_pos-2) >= (dir_oi->oi_size / OSPFS_DIRENTRY_SIZE)) {
+		/* If at the end of the directory, set 'r' to 1 and exit
+		 * the loop.  For now we do this all the time.
+		 *
+		 * EXERCISE: Your code here */
+        if ((f_pos - 2) * OSPFS_DIRENTRY_SIZE == dir_oi -> oi_size) {
+            #if (DEBUG == 1)
+                eprintk("End of the entry, exit the loop\n");
+                eprintk("%d of files in the directory \n", f_pos-2);
+            #endif
             r = 1;
             break;
         }
+        
+		/* Get a pointer to the next entry (od) in the directory.
+		 * The file system interprets the contents of a
+		 * directory-file as a sequence of ospfs_direntry structures.
+		 * You will find 'f_pos' and 'ospfs_inode_data' useful.
+		 *
+		 * Then use the fields of that file to fill in the directory
+		 * entry.  To figure out whether a file is a regular file or
+		 * another directory, use 'ospfs_inode' to get the directory
+		 * entry's corresponding inode, and check out its 'oi_ftype'
+		 * member.
+		 *
+		 * Make sure you ignore blank directory entries!  (Which have
+		 * an inode number of 0.)
+		 *
+		 * If the current entry is successfully read (the call to
+		 * filldir returns >= 0), or the current entry is skipped,
+		 * your function should advance f_pos by the proper amount to
+		 * advance to the next directory entry.
+		 */
 
-        /* Get a pointer to the next entry (od) in the directory.
-         * The file system interprets the contents of a
-         * directory-file as a sequence of ospfs_direntry structures.
-         * You will find 'f_pos' and 'ospfs_inode_data' useful.
-         *
-         * Then use the fields of that file to fill in the directory
-         * entry.  To figure out whether a file is a regular file or
-         * another directory, use 'ospfs_inode' to get the directory
-         * entry's corresponding inode, and check out its 'oi_ftype'
-         * member.
-         *
-         * Make sure you ignore blank directory entries!  (Which have
-         * an inode number of 0.)
-         *
-         * If the current entry is successfully read (the call to
-         * filldir returns >= 0), or the current entry is skipped,
-         * your function should advance f_pos by the proper amount to
-         * advance to the next directory entry.
-         */
-
-        /* EXERCISE: Your code here */
-
-        uint32_t blockno = ospfs_inode_blockno(dir_oi, (f_pos-2) * OSPFS_DIRENTRY_SIZE);
-
-        // ospfs_inode_blockno returns 0 on error
-        if (blockno == 0) {
-            r = -EIO;
-            break;
-        }
-
-        od = ospfs_block(blockno);
-        od += f_pos % (OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE);
-
-        if (od->od_ino == 0) {
+		/* EXERCISE: Your code here */
+        od = (ospfs_direntry_t*) ospfs_inode_data(dir_oi, (f_pos - 2)* OSPFS_DIRENTRY_SIZE);
+        //if inode number is zero, ignore it and continue
+        if (od -> od_ino == 0) {
+        #if (DEBUG == 1)
+            eprintk("od_ino of %s is 0, skip this entry\n", od->od_name);
+        #endif
             f_pos++;
             continue;
         }
 
-        entry_oi = ospfs_inode(od->od_ino);
+        entry_oi = ospfs_inode(od -> od_ino);
+      		switch(entry_oi->oi_ftype) {
+      			case OSPFS_FTYPE_REG:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_REG);
+					break;
+      			case OSPFS_FTYPE_DIR:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_DIR);
+					break;
+      			case OSPFS_FTYPE_SYMLINK:
+     				 ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_LNK);
+					break;
 
-        int type;
-        if (entry_oi->oi_ftype == OSPFS_FTYPE_REG)
-            type = DT_REG;
-        else if (entry_oi->oi_ftype == OSPFS_FTYPE_DIR)
-            type = DT_DIR;
-        else if (entry_oi->oi_ftype == OSPFS_FTYPE_SYMLINK)
-            type = DT_LNK;
+    		 	default:
+    		 		break;
+      }       
+
+       if (ok_so_far >= 0)
+            f_pos++;
+
         else {
-            r = -EIO;
-            break;
-        }
-
-        ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, type);
-
-        if (ok_so_far < 0) {
+            #if (DEBUG == 1)
+                eprintk("Filldir return < 0, exit the loop\n");
+            #endif
             r = 0;
             break;
         }
+	}
 
-        f_pos++;
-    }
-
-    // Save the file position and return!
-    filp->f_pos = f_pos;
-    return r;
+	// Save the file position and return!
+	filp->f_pos = f_pos;
+	return r;
 }
 
 
@@ -541,34 +557,29 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 static int
 ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 {
-    ospfs_inode_t *oi = ospfs_inode(dentry->d_inode->i_ino);
-    ospfs_inode_t *dir_oi = ospfs_inode(dentry->d_parent->d_inode->i_ino);
-    int entry_off;
-    ospfs_direntry_t *od;
+	ospfs_inode_t *oi = ospfs_inode(dentry->d_inode->i_ino);
+	ospfs_inode_t *dir_oi = ospfs_inode(dentry->d_parent->d_inode->i_ino);
+	int entry_off;
+	ospfs_direntry_t *od;
 
-    od = NULL; // silence compiler warning; entry_off indicates when !od
-    for (entry_off = 0; entry_off < dir_oi->oi_size;
-         entry_off += OSPFS_DIRENTRY_SIZE) {
-        od = ospfs_inode_data(dir_oi, entry_off);
-        if (od->od_ino > 0
-            && strlen(od->od_name) == dentry->d_name.len
-            && memcmp(od->od_name, dentry->d_name.name, dentry->d_name.len) == 0)
-            break;
-    }
+	od = NULL; // silence compiler warning; entry_off indicates when !od
+	for (entry_off = 0; entry_off < dir_oi->oi_size;
+	     entry_off += OSPFS_DIRENTRY_SIZE) {
+		od = ospfs_inode_data(dir_oi, entry_off);
+		if (od->od_ino > 0
+		    && strlen(od->od_name) == dentry->d_name.len
+		    && memcmp(od->od_name, dentry->d_name.name, dentry->d_name.len) == 0)
+			break;
+	}
 
-    if (entry_off == dir_oi->oi_size) {
-        printk("<1>ospfs_unlink should not fail!\n");
-        return -ENOENT;
-    }
+	if (entry_off == dir_oi->oi_size) {
+		printk("<1>ospfs_unlink should not fail!\n");
+		return -ENOENT;
+	}
 
-    od->od_ino = 0;
-    oi->oi_nlink--;
-
-    // free the blocks if the file is actually gone (no pointers to it)
-    if (oi->oi_ftype != OSPFS_FTYPE_SYMLINK && oi->oi_nlink == 0)
-        change_size(oi, 0);
-
-    return 0;
+	od->od_ino = 0;
+	oi->oi_nlink--;
+	return 0;
 }
 
 
