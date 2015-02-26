@@ -1,18 +1,4 @@
-Skip to content
- This repository
-Explore
-Gist
-Blog
-Help
-XIUXIUXIU5 XIUXIUXIU5
- 
-2  Watch 
-  Star 0
- Fork 0bkonold/CS111-Lab3
- branch: master  CS111-Lab3/ospfsmod.c
-bkonoldbkonold on May 15, 2014 removed printk's and finished conditional symlinks
-1 contributor
-1656 lines (1379 sloc)  54.796 kb RawBlameHistory   
+
 #include <linux/autoconf.h>
 #include <linux/version.h>
 #ifndef EXPORT_SYMTAB
@@ -1668,5 +1654,3 @@ module_exit(exit_ospfs_fs)
 MODULE_AUTHOR("Brett Konold and Divakar Bala");
 MODULE_DESCRIPTION("OSPFS");
 MODULE_LICENSE("GPL");
-Status API Training Shop Blog About
-© 2015 GitHub, Inc. Terms Privacy Security Contact
