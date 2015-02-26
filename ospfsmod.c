@@ -1123,91 +1123,9 @@ remove_block(ospfs_inode_t *oi)
 	return 0; // Replace this line
 }
 
-
-// change_size(oi, want_size)
-//	Use this function to change a file's size, allocating and freeing
-//	blocks as necessary.
-//
-//   Inputs:  oi	-- pointer to the file whose size we're changing
-//	      want_size -- the requested size in bytes
-//   Returns: 0 on success, < 0 on error.  In particular:
-//		-ENOSPC: if there are no free blocks available
-//		-EIO:    an I/O error -- for example an indirect block should
-//			 exist, but doesn't
-//	      If the function succeeds, the file's oi_size member should be
-//	      changed to want_size, with blocks allocated as appropriate.
-//	      Any newly-allocated blocks should be erased (set to 0).
-//	      If there is an -ENOSPC error when growing a file,
-//	      the file size and allocated blocks should not change from their
-//	      original values!!!
-//            (However, if there is an -EIO error, do not worry too much about
-//	      restoring the file.)
-//
-//   If want_size has the same number of blocks as the current file, life
-//   is good -- the function is pretty easy.  But the function might have
-//   to add or remove blocks.
-//
-//   If you need to grow the file, then do so by adding one block at a time
-//   using the add_block function you coded above. If one of these additions
-//   fails with -ENOSPC, you must shrink the file back to its original size!
-//
-//   If you need to shrink the file, remove blocks from the end of
-//   the file one at a time using the remove_block function you coded above.
-//
-//   Also: Don't forget to change the size field in the metadata of the file.
-//         (The value that the final add_block or remove_block set it to
-//          is probably not correct).
-//
-//   EXERCISE: Finish off this function.
-
-static int
-change_size(ospfs_inode_t *oi, uint32_t new_size)
-{
-	uint32_t old_size = oi->oi_size;
-	int r = 0;
-
-	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here *//*
-		if(add_block(oi) < 0)
-		{
-			#if (DEBUG == 1)
-        		eprintk("change size failed\n");
-    		#endif
-
-			while(ospfs_size2nblocks(oi->oi_size) != old_size)
-			{
-				remove_block(oi);
-				#if (DEBUG == 1)
-        			eprintk("free the blocks that has been added\n");
-    			#endif
-			}
-			return -ENOSPC;
-		}
-		return 0; // Replace this line
-	}
-
-	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here *//*
-		if(remove_block(oi) < 0)
-		{
-			while(ospfs_size2nblocks(oi->oi_size) != old_size)
-				add_block(oi);
-			return -ENOSPC;
-		}
-		#if (DEBUG == 1)
-        	eprintk("remove block to shrink the size\n");
-    	#endif
-		return -EIO; // Replace this line
-	}
-
-	/* EXERCISE: Make sure you update necessary file meta data
-	             and return the proper value. *//*
-
-	oi->oi_size = new_size;
-	return 0; // Replace this line
-}
-
 */
+
+
 static int
 add_block(ospfs_inode_t *oi)
 {
@@ -1323,6 +1241,89 @@ add_block(ospfs_inode_t *oi)
   return 0;
 }
 
+// change_size(oi, want_size)
+//	Use this function to change a file's size, allocating and freeing
+//	blocks as necessary.
+//
+//   Inputs:  oi	-- pointer to the file whose size we're changing
+//	      want_size -- the requested size in bytes
+//   Returns: 0 on success, < 0 on error.  In particular:
+//		-ENOSPC: if there are no free blocks available
+//		-EIO:    an I/O error -- for example an indirect block should
+//			 exist, but doesn't
+//	      If the function succeeds, the file's oi_size member should be
+//	      changed to want_size, with blocks allocated as appropriate.
+//	      Any newly-allocated blocks should be erased (set to 0).
+//	      If there is an -ENOSPC error when growing a file,
+//	      the file size and allocated blocks should not change from their
+//	      original values!!!
+//            (However, if there is an -EIO error, do not worry too much about
+//	      restoring the file.)
+//
+//   If want_size has the same number of blocks as the current file, life
+//   is good -- the function is pretty easy.  But the function might have
+//   to add or remove blocks.
+//
+//   If you need to grow the file, then do so by adding one block at a time
+//   using the add_block function you coded above. If one of these additions
+//   fails with -ENOSPC, you must shrink the file back to its original size!
+//
+//   If you need to shrink the file, remove blocks from the end of
+//   the file one at a time using the remove_block function you coded above.
+//
+//   Also: Don't forget to change the size field in the metadata of the file.
+//         (The value that the final add_block or remove_block set it to
+//          is probably not correct).
+//
+//   EXERCISE: Finish off this function.
+
+static int
+change_size(ospfs_inode_t *oi, uint32_t new_size)
+{
+	uint32_t old_size = oi->oi_size;
+	int r = 0;
+
+	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
+	        /* EXERCISE: Your code here */
+		if(add_block(oi) < 0)
+		{
+			#if (DEBUG == 1)
+        		eprintk("change size failed\n");
+    		#endif
+
+			while(ospfs_size2nblocks(oi->oi_size) != old_size)
+			{
+				remove_block(oi);
+				#if (DEBUG == 1)
+        			eprintk("free the blocks that has been added\n");
+    			#endif
+			}
+			return -ENOSPC;
+		}
+		return 0; // Replace this line
+	}
+
+	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
+	        /* EXERCISE: Your code here */
+		if(remove_block(oi) < 0)
+		{
+			while(ospfs_size2nblocks(oi->oi_size) != old_size)
+				add_block(oi);
+			return -ENOSPC;
+		}
+		#if (DEBUG == 1)
+        	eprintk("remove block to shrink the size\n");
+    	#endif
+		return -EIO; // Replace this line
+	}
+
+	/* EXERCISE: Make sure you update necessary file meta data
+	             and return the proper value. */
+
+	oi->oi_size = new_size;
+	return 0; // Replace this line
+}
+
 // remove_block(ospfs_inode_t *oi)
 //   Removes a single data block from the end of a file, freeing
 //   any indirect and indirect^2 blocks that are no
@@ -1403,77 +1404,7 @@ remove_block(ospfs_inode_t *oi)
   return 0;
 }
 
-// change_size(oi, want_size)
-//Use this function to change a file's size, allocating and freeing
-//blocks as necessary.
-//
-//   Inputs:  oi-- pointer to the file whose size we're changing
-//      want_size -- the requested size in bytes
-//   Returns: 0 on success, < 0 on error.  In particular:
-//-ENOSPC: if there are no free blocks available
-//-EIO:    an I/O error -- for example an indirect block should
-// exist, but doesn't
-//      If the function succeeds, the file's oi_size member should be
-//      changed to want_size, with blocks allocated as appropriate.
-//      Any newly-allocated blocks should be erased (set to 0).
-//      If there is an -ENOSPC error when growing a file,
-//      the file size and allocated blocks should not change from their
-//      original values!!!
-//            (However, if there is an -EIO error, do not worry too much about
-//      restoring the file.)
-//
-//   If want_size has the same number of blocks as the current file, life
-//   is good -- the function is pretty easy.  But the function might have
-//   to add or remove blocks.
-//
-//   If you need to grow the file, then do so by adding one block at a time
-//   using the add_block function you coded above. If one of these additions
-//   fails with -ENOSPC, you must shrink the file back to its original size!
-//
-//   If you need to shrink the file, remove blocks from the end of
-//   the file one at a time using the remove_block function you coded above.
-//
-//   Also: Don't forget to change the size field in the metadata of the file.
-//         (The value that the final add_block or remove_block set it to
-//          is probably not correct).
-//
-//   EXERCISE: Finish off this function.
 
-static int
-change_size(ospfs_inode_t *oi, uint32_t new_size)
-{
-  uint32_t old_size = oi->oi_size;
-  int r = 0;
-  int retval;
-  (void) old_size, (void) r;
-  eprintk("change_size from %d to %d\n", oi->oi_size, new_size);
-  while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-    eprintk("Growing...\n");
-    retval = add_block(oi);
-    if (retval < 0)
-      {
-	while (r-- > 0)
-	  free_block(oi);
-	return retval;
-      } 
-    r++;
-  }
-  while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-    eprintk("Shrinking...\n");
-    retval = remove_block(oi);
-    if (retval < 0)
-      {
-	while (r-- > 0)
-	  add_block(oi);
-	return retval;
-      } 
-    r++;
-  }
-  oi->oi_size = new_size;
-  /* EXERCISE: Make sure you update necessary file meta data
-     and return the proper value. */
-  return 0;
-}
 
 // ospfs_notify_change
 //	This function gets called when the user changes a file's size,
