@@ -1073,7 +1073,7 @@ remove_block(ospfs_inode_t *oi)
 //          is probably not correct).
 //
 //   EXERCISE: Finish off this function.
-
+/*
 static int
 change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
@@ -1099,7 +1099,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
     oi->oi_size = new_size;
     return 0;
 }
-
+*/
 
 /*
 static int
@@ -1445,7 +1445,7 @@ remove_block(ospfs_inode_t *oi)
 //          is probably not correct).
 //
 //   EXERCISE: Finish off this function.
-
+*/
 static int
 change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
@@ -1453,7 +1453,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	int r = 0;
 
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here *//*
+	        /* EXERCISE: Your code here */
 		if(add_block(oi) < 0)
 		{
 			#if (DEBUG == 1)
@@ -1473,7 +1473,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	}
 
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here *//*
+	        /* EXERCISE: Your code here */
 		if(remove_block(oi) < 0)
 		{
 			while(ospfs_size2nblocks(oi->oi_size) != old_size)
@@ -1492,7 +1492,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	oi->oi_size = new_size;
 	return 0; // Replace this line
 }
-*/
+
 
 // ospfs_notify_change
 //	This function gets called when the user changes a file's size,
