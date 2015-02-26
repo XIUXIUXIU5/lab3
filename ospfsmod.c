@@ -1168,11 +1168,12 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
-		if(add_block(oi) == -ENOSPC)
+		if(add_block(oi) < 0)
 		{
 			#if (DEBUG == 1)
         		eprintk("change size failed\n");
     		#endif
+
 			while(ospfs_size2nblocks(oi->oi_size) != old_size)
 			{
 				remove_block(oi);
@@ -1187,7 +1188,12 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
-		remove_block(oi);
+		if(remove_block(oi) < 0)
+		{
+			while(ospfs_size2nblocks(oi->oi_size) != old_size)
+				add_block(oi);
+			return -ENOSPC;
+		}
 		#if (DEBUG == 1)
         	eprintk("remove block to shrink the size\n");
     	#endif
@@ -1292,12 +1298,15 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-        if (amount + OSPFS_BLKSIZE > count) {
-            n = count - amount;
-        }
-        else {
+		    uint32_t remain = count - amount;
+    	
+    	if (remain > (OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE)))
             n = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
-        }
+
+
+        else 
+            n = count - amount;
+       
         
         if (copy_to_user(buffer, data+*f_pos % OSPFS_BLKSIZE, n) != 0) {
             #if DEBUG == 1
@@ -1360,7 +1369,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	/* EXERCISE: Your code here */
     if (count + *f_pos > oi->oi_size) {
         #if DEBUG == 1
-            eprintk("Write beyongd the file, change file size \n");
+            eprintk("Write beyongd the file, change4 file size \n");
         #endif
         if((retval = change_size(oi, count + *f_pos)) < 0)
             goto done;
