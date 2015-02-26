@@ -1724,67 +1724,49 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
-    ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
-    uint32_t entry_ino = 0;
+	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
+	uint32_t entry_ino = 0;
 
-    if (dentry->d_name.len > OSPFS_MAXNAMELEN || strlen(symname) > OSPFS_MAXSYMLINKLEN)
-        return -ENAMETOOLONG;
+	/* EXERCISE: Your code here. */
 
-    if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len))
-        return -EEXIST;
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN || strlen(symname) > OSPFS_MAXSYMLINKLEN)
+		return -ENAMETOOLONG;
 
-    ospfs_direntry_t* dirEntry = create_blank_direntry(dir_oi);
+	if(find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.len) != NULL)
+		return -EEXIST;
 
-    if (IS_ERR(dirEntry))
-        return PTR_ERR(dirEntry);
+	ospfs_direntry_t *newsym_direntry = create_blank_direntry(dir_oi);
 
-    ospfs_super_t* super = ospfs_block(1);
+	if(newsym_direntry == -ENOSPC)
+		return -ENOSPC;
 
-    int i;
-    ospfs_symlink_inode_t* inodes = ospfs_block(super->os_firstinob);
-    for (i = 1; i < super->os_ninodes; i++)
-        if (inodes[i].oi_nlink == 0)
-            break;
+	uint32_t newsym_ino = allocate_inode();
 
-    if (i == super->os_ninodes)
-        return -ENOSPC;
+	if(newsym_ino == -ENOSPC)
+		return -ENOSPC;
 
-    dirEntry->od_ino = entry_ino = i;
-    memcpy(dirEntry->od_name, dentry->d_name.name, dentry->d_name.len);
-    dirEntry->od_name[dentry->d_name.len] = '\0';
+	newsym_direntry->od_ino = newsym_ino;
+	strcpy(newsym_direntry->od_name, dentry->d_name.name);
 
-    inodes[i].oi_ftype = OSPFS_FTYPE_SYMLINK;
-    inodes[i].oi_size = strlen(symname);
-    inodes[i].oi_nlink = 1;
+	ospfs_symlink_inode_t *newsym_oi = ospfs_inode(newsym_ino);
 
-    char* q = strchr(symname, '?');
-    char* c = strchr(symname, ':');
+	newsym_oi->oi_size = strlen(symname)+1;
+	newsym_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
+	newsym_oi->oi_nlink = 1;
 
-    // conditional symlink
-    if (q && c) {
-        // form string like root?:path1\0path2\0
-        memcpy(&inodes[i].oi_symlink[0], symname, 5);
-        inodes[i].oi_symlink[5] = ':';
-        q++;
-        memcpy(&inodes[i].oi_symlink[6], q, c - q);
-        inodes[i].oi_symlink[6 + c - q] = '\0';
-        c++;
-        memcpy(&inodes[i].oi_symlink[6 + c - q], c, strlen(c));
-        inodes[i].oi_symlink[6 + c - q + 1 + strlen(c)] = '\0';
-    }
-    else
-        strcpy(inodes[i].oi_symlink, symname);
+    strcpy(newsym_oi->oi_symlink, symname);
 
-    /* Execute this code after your function has successfully created the
-       file.  Set entry_ino to the created file's inode number before
-       getting here. */
-    {
-        struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
-        if (!i)
-            return -ENOMEM;
-        d_instantiate(dentry, i);
-        return 0;
-    }
+
+	/* Execute this code after your function has successfully created the
+	   file.  Set entry_ino to the created file's inode number before
+	   getting here. */
+	{
+		struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
+		if (!i)
+			return -ENOMEM;
+		d_instantiate(dentry, i);
+		return 0;
+	}
 }
 
 
