@@ -1475,7 +1475,6 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 			return -ENOSPC;
 		}
 	
-		return -EIO; // Replace this line
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
