@@ -818,142 +818,6 @@ allocate_inode(void) {
 static int
 add_block(ospfs_inode_t *oi)
 {
-    // current number of blocks in file
-    uint32_t n = ospfs_size2nblocks(oi->oi_size);
-
-    // keep track of allocations to free in case of -ENOSPC
-    uint32_t *allocated[2] = { 0, 0 };
-
-    // don't need indirect blocks
-    if (n < 10) {
-        int newBlkNum = allocate_block();
-        if (newBlkNum == 0)
-            return -ENOSPC;
-        
-        oi->oi_direct[n] = newBlkNum;
-
-        void* data = ospfs_block(newBlkNum);
-        memset(data, 0, OSPFS_BLKSIZE);
-    }
-    // need new indirect block
-    else if (n == 10) {
-        int indirectBlkNum = allocate_block();
-        if (indirectBlkNum == 0)
-            return -ENOSPC;
-
-        allocated[0] = indirectBlkNum;
-        
-        int newBlkNum = allocate_block();
-        if (newBlkNum == 0) {
-            free_block(allocated[0]);
-            return -ENOSPC;
-        }
-
-        uint32_t* indirectData = ospfs_block(indirectBlkNum);
-        memset(indirectData, 0, OSPFS_BLKSIZE);
-
-        void* newBlkData = ospfs_block(newBlkNum);
-        memset(newBlkData, 0, OSPFS_BLKSIZE);
-
-        oi->oi_indirect = indirectBlkNum;
-        *indirectData = newBlkNum;
-        
-    }
-    // allocate another block within indirect
-    else if (n > 10 && n < 266) {
-        int newBlkNum = allocate_block();
-        if (newBlkNum == 0)
-            return -ENOSPC;
-
-        void* data = ospfs_block(newBlkNum);
-        memset(data, 0, OSPFS_BLKSIZE);
-
-        uint32_t* indirectData = ospfs_block(oi->oi_indirect);
-        indirectData[n - 10] = newBlkNum;
-    }
-    // need new indirect^2 block
-    else if (n == 266) {
-        int indirectBlkNumL1 = allocate_block();
-        if (indirectBlkNumL1 == 0)
-            return -ENOSPC;
-
-        allocated[0] = indirectBlkNumL1;
-        
-        int indirectBlkNumL2 = allocate_block();
-        if (indirectBlkNumL2 == 0) {
-            free_block(allocated[0]);
-            return -ENOSPC;
-        }
-
-        allocated[1] = indirectBlkNumL2;
-        
-        int newBlkNum = allocate_block();
-        if (newBlkNum == 0) {
-            free_block(allocated[0]);
-            free_block(allocated[1]);
-            return -ENOSPC;
-        }
-
-        uint32_t* indirectDataL1 = ospfs_block(indirectBlkNumL1);
-        memset(indirectDataL1, 0, OSPFS_BLKSIZE);
-
-        uint32_t* indirectDataL2 = ospfs_block(indirectBlkNumL2);
-        memset(indirectDataL2, 0, OSPFS_BLKSIZE);
-
-        void* newBlkData = ospfs_block(newBlkNum);
-        memset(newBlkData, 0, OSPFS_BLKSIZE);
-
-        oi->oi_indirect2 = indirectBlkNumL1;
-
-        *indirectDataL1 = indirectBlkNumL2;
-
-        *indirectDataL2 = newBlkNum;
-        
-    }
-    // allocate another block within indirect^2
-    else if (n >= 266 && n < 65802) {
-        int newBlkNum = allocate_block();
-        if (newBlkNum == 0) {
-            return -ENOSPC;
-        }
-
-        allocated[0] = newBlkNum;
-
-        if ((n - 10) % 256 == 0) {
-            int indirectBlkNumL2 = allocate_block();
-            if (indirectBlkNumL2 == 0) {
-                free_block(allocated[0]);
-                return -ENOSPC;
-            }
-
-            uint32_t* indirectDataL2 = ospfs_block(indirectBlkNumL2);
-            memset(indirectDataL2, 0, OSPFS_BLKSIZE);
-
-            *indirectDataL2 = newBlkNum;
-
-            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            indirectDataL1[(n - 266) / 256] = newBlkNum;
-        } else {
-            uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            int indirectBlkNumL2 = indirectDataL1[(n - 266) / 256];
-
-            uint32_t* indirectDataL2 = ospfs_block(indirectBlkNumL2);
-            indirectDataL2[(n - 266) % 256] = newBlkNum;
-        }
-    }
-    else
-        return -EIO;
-    
-    oi->oi_size += 1024;
-    return 0; 
-}
-
-
-
-/*
-static int
-add_block(ospfs_inode_t *oi)
-{
 	// current number of blocks in file
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
@@ -963,7 +827,7 @@ add_block(ospfs_inode_t *oi)
 
 	/* EXERCISE: Your code here */
 
-/*
+
 	if (n >= OSPFS_NDIRECT + 2*OSPFS_NINDIRECT)
 	{
 		return -EIO;
@@ -1130,7 +994,6 @@ add_block(ospfs_inode_t *oi)
 	  return 0;
 }
 
-*/
 // remove_block(ospfs_inode_t *oi)
 //   Removes a single data block from the end of a file, freeing
 //   any indirect and indirect^2 blocks that are no
