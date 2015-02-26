@@ -1489,9 +1489,9 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 		block_direntry = ospfs_block(dir_oi->oi_direct[block_no-1]);
 		for(j = 0; j < OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE; j++)
 			{
-				if (block_direntry[j].inode == 0)
+				if (block_direntry[j].od_ino == 0)
 				{
-				return block_direntry[j];
+				return &block_direntry[j];
 				}
 		}
 
@@ -1503,26 +1503,26 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 		if(ospfs_size2nblocks(dir_oi->oi_size) <= OSPFS_NDIRECT)
 		{
 			block_direntry = ospfs_block(dir_oi->oi_direct[block_no]);
-			return block_direntry[0];
+			return &block_direntry[0];
 		}
 		else{
 			uint32_t* new_block = ospfs_block(dir_oi->oi_indirect);
 			block_direntry = ospfs_block(new_block[0]);
-			return block_direntry[0];
+			return &block_direntry[0];
 		}
 	
 	}
 
 	//if it is in the range of incdirect
-	else if(blockno <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
+	else if(block_no <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
 	{
 		uint32_t* indirect_block = ospfs_block(dir_oi->oi_indirect);
-		block_direntry = ospfs_block(indirect_block[ blockno - OSPFS_NDIRECT-1]);
+		block_direntry = ospfs_block(indirect_block[ block_no - OSPFS_NDIRECT-1]);
 		for(j = 0; j < OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE; j++)
 			{
-				if (block_direntry[j].inode == 0)
+				if (block_direntry[j].od_ino == 0)
 				{
-				return block_direntry[j];
+				return &block_direntry[j];
 				}
 			}
 
@@ -1533,33 +1533,33 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 		if(ospfs_size2nblocks(dir_oi->oi_size) <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
 		{
-			block_direntry = ospfs_block(indirect_block[ blockno - OSPFS_NDIRECT-1]);
-			return block_direntry[0];
+			block_direntry = ospfs_block(indirect_block[ block_no - OSPFS_NDIRECT-1]);
+			return &block_direntry[0];
 		}
 		//first doubly indirect
 		else{
 			uint32_t* new_block = ospfs_block(dir_oi->oi_indirect2);
 			uint32_t* doubly_indirect = ospfs_block(new_block[0]);
 			block_direntry = ospfs_block(doubly_indirect[0]);
-			return block_direntry[0];
+			return &block_direntry[0];
 		}
 
 	}
 
 	//if it is in doubly indirect block
-	else if(blockno <= OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT*OSPFS_NINDIRECT)
+	else if(block_no <= OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT*OSPFS_NINDIRECT)
 	{
 		uint32_t* indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
-		uint32_t index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT-1)/OSPFS_NINDIRECT;
+		uint32_t index = (block_no - OSPFS_NDIRECT-OSPFS_NINDIRECT-1)/OSPFS_NINDIRECT;
 		uint32_t* indirect_block2_block = ospfs_block(indirect_block2[index]);
-		uint32_t index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT;
+		uint32_t index2 = (block_no - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT;
 		block_direntry = ospfs_block(indirect_block2_block[index2]);
 
 		for(j = 0; j < OSPFS_BLKSIZE / OSPFS_DIRENTRY_SIZE; j++)
 			{
-				if (block_direntry[j].inode == 0)
+				if (block_direntry[j].od_ino == 0)
 				{
-				return block_direntry[j];
+				return &block_direntry[j];
 				}
 			}
 		uint32_t retval = change_size(dir_oi, dir_oi->oi_size + OSPFS_BLKSIZE);
@@ -1568,12 +1568,12 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 			return ERR_PTR(retval); 
 
 		 indirect_block2 = ospfs_block(dir_oi->oi_indirect2);
-		 index = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT)/OSPFS_NINDIRECT;
+		 index = (block_no - OSPFS_NDIRECT-OSPFS_NINDIRECT)/OSPFS_NINDIRECT;
 		 indirect_block2_block = ospfs_block(indirect_block2[index]);
-		 index2 = (blockno - OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
+		 index2 = (block_no - OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
 		block_direntry = ospfs_block(indirect_block2_block[index2]);
 
-		return block_direntry[0];
+		return &block_direntry[0];
 	}
 
 	
