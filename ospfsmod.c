@@ -1048,73 +1048,111 @@ add_block(ospfs_inode_t *oi)
 // you set the block pointer to 0.  Don't leave pointers to
 // deallocated blocks laying around!
 
+
 static int
 remove_block(ospfs_inode_t *oi)
 {
-    // current number of blocks in file
-    uint32_t n = ospfs_size2nblocks(oi->oi_size);
+	// current number of blocks in file
+	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
-    if (n == 0)
-        return -EIO;
-    
-    if (n <= 10) {
-        free_block(oi->oi_direct[n-1]);
-        oi->oi_direct[n-1] = 0;
-    }
-    else if (n == 11) {
-        uint32_t* indirectData = ospfs_block(oi->oi_indirect);
 
-        free_block(indirectData[0]);
-        free_block(oi->oi_indirect);
+	/* EXERCISE: Your code here */
 
-        indirectData[0] = 0;
-        oi->oi_indirect = 0;
-    }
-    else if (n > 11 && n <=266) {
-        uint32_t* indirectData = ospfs_block(oi->oi_indirect);
 
-        free_block(indirectData[n-11]);
+	//if it is in the direct block
+	
+	if(n <= OSPFS_NDIRECT)
+	{
+		uint32_t freeblock = oi->oi_direct[n-1];
 
-        indirectData[n-11] = 0;
-    } 
-    else if (n == 267) {
-        uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-        uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[0]);
+		free_block(freeblock);
+		
+		oi->oi_direct[n-1] = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block in direct block\n");
+    	#endif		
 
-        free_block(indirectDataL2[0]);
-        free_block(indirectDataL1[0]);
-        free_block(oi->oi_indirect2);
+	}	
 
-        indirectDataL2[0] = 0;
-        indirectDataL1[0] = 0;
-        oi->oi_indirect2 = 0;
-    }
-    else if (n > 267 && n <= 65802) {
-        if ((n - 11) % 256 == 0) {
+	//if it is the first block in indirect block
+	else if (n == OSPFS_NDIRECT +1)
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+		uint32_t freeblock = indirect_block[0];
+		free_block(freeblock);
+		free_block(oi->oi_indirect);
+
+		oi->oi_indirect = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block as first block in indirect block\n");
+    	#endif
+	}
+
+	//if it is in the indirect block
+	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+		uint32_t freeblock = indirect_block[n-OSPFS_NDIRECT-1];
+		free_block(freeblock);
+		#if (DEBUG == 1)
+		indirect_block[n-OSPFS_NDIRECT] = 0;
+        	eprintk("free a block in indirect block\n");
+    	#endif
+	}
+
+	//if it is the first block in doubly indirect block
+	else if(n == OSPFS_NDIRECT + OSPFS_NINDIRECT +1)
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect2);
+		uint32_t* indirect_block2 = ospfs_block(indirect_block[0]);
+
+		free_block(indirect_block2[0]);
+		free_block(indirect_block[0]);
+		free_block(oi->oi_indirect2);
+
+		oi->oi_indirect2 = 0;
+		#if (DEBUG == 1)
+        	eprintk("free a block as first block in doubly indirect block\n");
+    	#endif		
+	}
+
+	//if it is in the doubly indirect block
+	else if(n <= OSPFS_NDIRECT + OSPFS_NINDIRECT + OSPFS_NINDIRECT *OSPFS_NINDIRECT)
+	{
+		if ((n - OSPFS_NDIRECT-1) % 256 == 0) {
             uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - 267) / 256]);
+            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
 
             free_block(indirectDataL2[0]);
-            free_block(indirectDataL1[(n - 267) / 256]);
+            free_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
 
             indirectDataL2[0] = 0;
-            indirectDataL1[(n - 267) / 256] = 0;
+            indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT] = 0;
 
         } else {
             uint32_t* indirectDataL1 = ospfs_block(oi->oi_indirect2);
-            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - 267) / 256]);
+            uint32_t* indirectDataL2 = ospfs_block(indirectDataL1[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) / OSPFS_NINDIRECT]);
 
-            free_block(indirectDataL2[(n - 267) % 256]);
+            free_block(indirectDataL2[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT]);
 
-            indirectDataL2[(n - 267) % 256] = 0;
+            indirectDataL2[(n - OSPFS_NDIRECT-OSPFS_NINDIRECT-1) % OSPFS_NINDIRECT]= 0;
         }
-    }
+		#if (DEBUG == 1)
+        	eprintk("free a block in doubly indirect block\n");
+    	#endif		
+	}
 
-    oi->oi_size -= 1024 < oi->oi_size ? 1024 : oi->oi_size;
-    return 0;
+	else 
+		return -EIO;
+	if(n <= 1)
+		oi->oi_size = 0;
+	else
+		oi->oi_size = (n - 1) * OSPFS_BLKSIZE;
+
+
+
+	return 0; // Replace this line
 }
-
-
 // change_size(oi, want_size)
 //  Use this function to change a file's size, allocating and freeing
 //  blocks as necessary.
