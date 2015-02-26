@@ -1690,7 +1690,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	newfile_oi->oi_indirect = 0;
 	newfile_oi->oi_indirect2 = 0;
-	for(int i = 0; i < OSPFS_NDIRECT; i++)
+	int i = 0;
+	for(; i < OSPFS_NDIRECT; i++)
 	{
 		newfile_oi->oi_direct[i] = 0;
 	}
