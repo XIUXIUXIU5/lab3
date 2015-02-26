@@ -1368,61 +1368,78 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
 {
-    ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
-    int retval = 0;
-    size_t amount = 0;
+    #if DEBUG == 1
+        eprintk("Enter ospfs_write \n");
+    #endif
+	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
+	int retval = 0;
+	size_t amount = 0;
 
-    // Support files opened with the O_APPEND flag.  To detect O_APPEND,
-    // use struct file's f_flags field and the O_APPEND bit.
-    /* EXERCISE: Your code here */
-
-    if (filp->f_flags & O_APPEND)
+	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
+	// use struct file's f_flags field and the O_APPEND bit.
+	/* EXERCISE: Your code here */
+    if (filp->f_flags & O_APPEND) {
+        #if DEBUG == 1
+            eprintk("O_APPEND is set \n");
+        #endif
         *f_pos = oi->oi_size;
+    }
+    
 
-    // If the user is writing past the end of the file, change the file's
-    // size to accomodate the request.  (Use change_size().)
-    /* EXERCISE: Your code here */
-
-    if (count + *f_pos > oi->oi_size) 
-        if (change_size(oi, count + *f_pos) < 0)
-            return -EIO;
-
-    // Copy data block by block
-    while (amount < count && retval >= 0) {
-        uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
-        uint32_t n;
-        char *data;
-
-        if (blockno == 0) {
-            retval = -EIO;
+	// If the user is writing past the end of the file, change the file's
+	// size to accomodate the request.  (Use change_size().)
+	/* EXERCISE: Your code here */
+    if (count + *f_pos > oi->oi_size) {
+        #if DEBUG == 1
+            eprintk("Write beyongd the file, change4 file size \n");
+        #endif
+        if((retval = change_size(oi, count + *f_pos)) < 0)
             goto done;
-        }
-
-        data = ospfs_inode_data(oi, *f_pos);
-
-        // Figure out how much data is left in this block to write.
-        // Copy data from user space. Return -EFAULT if unable to read
-        // read user space.
-        // Keep track of the number of bytes moved in 'n'.
-        /* EXERCISE: Your code here */
-
-        int bytesLeftInBlk = OSPFS_BLKSIZE - (*f_pos % OSPFS_BLKSIZE);
-
-        n = (count - amount) > bytesLeftInBlk ? bytesLeftInBlk : count - amount; 
-        
-        if (copy_from_user(data, buffer, n) != 0) {
-            retval = -EFAULT;
-            goto done;
-        }
-
-        buffer += n;
-        amount += n;
-        *f_pos += n;
     }
 
+	// Copy data block by block
+	while (amount < count && retval >= 0) {
+		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
+		uint32_t n;
+		char *data;
+
+		if (blockno == 0) {
+			retval = -EIO;
+			goto done;
+		}
+
+		data = ospfs_block(blockno);
+
+		// Figure out how much data is left in this block to write.
+		// Copy data from user space. Return -EFAULT if unable to read
+		// read user space.
+		// Keep track of the number of bytes moved in 'n'.
+		/* EXERCISE: Your code here */
+        if (amount + OSPFS_BLKSIZE > count) {
+            n = count - amount;
+        }
+        else {
+            n = OSPFS_BLKSIZE - ((*f_pos) % OSPFS_BLKSIZE);
+        }
+        
+        if (copy_from_user(data + (*f_pos)%OSPFS_BLKSIZE, buffer, n) != 0) {
+            #if DEBUG == 1
+                eprintk("copy from user fail \n");
+            #endif
+            retval = -EIO; // Replace these lines
+            goto done;
+        }
+
+
+		buffer += n;
+		amount += n;
+		*f_pos += n;
+	}
+
     done:
-    return (retval >= 0 ? amount : retval);
+	return (retval >= 0 ? amount : retval);
 }
+
 
 
 // find_direntry(dir_oi, name, namelen)
