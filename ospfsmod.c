@@ -1620,7 +1620,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	ospfs_direntry_t* new_dir = create_blank_direntry(ospfs_inode(dir->i_ino));
 
-    if (!src_oi)
+    if (!ospfs_inode(src_dentry->d_inode->i_ino))
         return -EIO;
 
 	if(IS_ERR(new_dir))
