@@ -1460,7 +1460,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
         		eprintk("change size failed\n");
     		#endif
 
-			while(ospfs_size2nblocks(oi->oi_size) != old_size)
+			while(ospfs_size2nblocks(oi->oi_size) > old_size)
 			{
 				remove_block(oi);
 				#if (DEBUG == 1)
@@ -1476,7 +1476,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	        /* EXERCISE: Your code here */
 		if(remove_block(oi) < 0)
 		{
-			while(ospfs_size2nblocks(oi->oi_size) != old_size)
+			while(ospfs_size2nblocks(oi->oi_size) < old_size)
 				add_block(oi);
 			return -ENOSPC;
 		}
