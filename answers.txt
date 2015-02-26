@@ -11,14 +11,14 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Lei Shao
+Student ID: 204304394
+Email: shaolei@ucla.edu
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Zhixin Wen
+Student ID: 504277662
+Email: john.wenzhixin@gmail.com
 
 # Extra credit problems
 #Extra credit problem: none
