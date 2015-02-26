@@ -1796,13 +1796,13 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 
 	if ((temp = strstr(symname, "root?")))
     	{
-      	symlink_oi->oi_symlink[0] = '?';
-      	strcpy(symlink_oi->oi_symlink+1, temp+5);
-      	temp = strchr(symlink_oi->oi_symlink,':');
+      	newsym_oi->oi_symlink[0] = '?';
+      	strcpy(newsym_oi->oi_symlink+1, temp+5);
+      	temp = strchr(newsym_oi->oi_symlink,':');
       	*temp = 0;
    	 }
   	else
-   		 strcpy(symlink_oi->oi_symlink, symname);
+   		 strcpy(newsym_oi->oi_symlink, symname);
 
 
 
