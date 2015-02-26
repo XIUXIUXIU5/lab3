@@ -610,19 +610,32 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 static uint32_t
 allocate_block(void)
 {
-    int i = 0;
-    ospfs_super_t *super = ospfs_block(1);
-    void* free_bitmap = ospfs_block(2);
-    while ((bitvector_test(free_bitmap, i) == 0) && i < super->os_nblocks)
-       i++;     
-    if (i == super->os_nblocks)
-        return 0;
-    bitvector_clear(free_bitmap, i);
-    return i;
+	/* EXERCISE: Your code here */
+
+	uint32_t blockno = 3;
+
+	uint32_t size = ospfs_super->os_nblocks;
+
+	void * bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
+
+	for(; blockno < size; blockno++)
+	{
+		if(bitvector_test(bitmap, blockno)) 
+		{
+			#if (DEBUG == 1)
+        		eprintk("allocate a block %d\n",blockno); 
+    		#endif
+			bitvector_clear(bitmap, blockno);
+			return blockno;
+		}
+	}
+	return 0;
+
 }
 
+
 // free_block(blockno)
-//  Use this function to free an allocated block.
+//	Use this function to free an allocated block.
 //
 //   Inputs:  blockno -- the block number to be freed
 //   Returns: none
@@ -635,10 +648,23 @@ allocate_block(void)
 static void
 free_block(uint32_t blockno)
 {
-    void* free_bitmap = ospfs_block(2);
-    bitvector_set(free_bitmap, blockno);
-}
+	/* EXERCISE: Your code here */
 
+	if(blockno < ospfs_super->os_firstinob + (ospfs_size2nblocks(ospfs_super->os_ninodes*OSPFS_INODESIZE)) || blockno > ospfs_super->os_nblocks)
+	{
+		#if (DEBUG == 1)
+        	eprintk("free a block failed\n");
+    	#endif
+
+        return;
+
+	}	
+	bitvector_set(ospfs_block(OSPFS_FREEMAP_BLK),blockno);
+	#if (DEBUG == 1)
+        eprintk("free block #%d succeeds\n",blockno);
+    #endif
+
+}
 
 /*****************************************************************************
  * FILE OPERATIONS
