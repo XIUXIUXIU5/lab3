@@ -1653,55 +1653,49 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
-    ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
-    uint32_t entry_ino = 0;
+	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
+	uint32_t entry_ino = 0;
+	/* EXERCISE: Your code here. */
+	// Replace this line
 
-    if (dentry->d_name.len > OSPFS_MAXNAMELEN)
-        return -ENAMETOOLONG;
+	/* Execute this code after your function has successfully created the
+	   file.  Set entry_ino to the created file's inode number before
+	   getting here. */
 
-    if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len))
-        return -EEXIST;
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN)
+	 		return -ENAMETOOLONG;
 
-    ospfs_direntry_t* dirEntry = create_blank_direntry(dir_oi);
+ 	if (find_direntry(dir_oi,dentry->d_name.name,dentry->d_name.len)!=NULL)
+ 	 		return -EEXIST;
 
-    if (IS_ERR(dirEntry))
-        return PTR_ERR(dirEntry);
+	ospfs_direntry_t* new_direntry = create_blank_direntry(dir_oi);
 
-    ospfs_super_t* super = ospfs_block(1);
+	if(IS_ERR(new_direntry))
+		return -ENOSPC;
 
-    int i;
-    ospfs_inode_t* inodes = ospfs_block(super->os_firstinob);
-    for (i = 1; i < super->os_ninodes; i++)
-        if (inodes[i].oi_nlink == 0)
-            break;
+	uint32_t newfile_ino = allocate_inode();
+	if(newfile_ino == -ENOSPC)
+		return -ENOSPC;
 
-    if (i == super->os_ninodes)
-        return -ENOSPC;
+	new_direntry->od_ino = newfile_ino;
+	strcpy(new_direntry->od_name, dentry->d_name.name);
 
-    dirEntry->od_ino = entry_ino = i;
-    memcpy(dirEntry->od_name, dentry->d_name.name, dentry->d_name.len);
-    dirEntry->od_name[dentry->d_name.len] = '\0';
 
-    inodes[i].oi_mode = mode;
-    inodes[i].oi_ftype = OSPFS_FTYPE_REG;
-    inodes[i].oi_size = 0;
-    inodes[i].oi_nlink = 1;
+	ospfs_inode_t* newfile_oi = ospfs_inode(newfile_ino);
 
-    inodes[i].oi_indirect = inodes[i].oi_indirect2 = 0;
-    int j;
-    for (j = 0; j < OSPFS_NDIRECT; j++)
-        inodes[i].oi_direct[j] = 0;
+	newfile_oi->oi_size = 0;
+	newfile_oi->oi_ftype = OSPFS_FTYPE_REG;
+	newfile_oi->oi_nlink = 1;
+	newfile_oi->oi_mode = mode;
 
-    /* Execute this code after your function has successfully created the
-       file.  Set entry_ino to the created file's inode number before
-       getting here. */
-    {
-        struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
-        if (!i)
-            return -ENOMEM;
-        d_instantiate(dentry, i);
-        return 0;
-    }
+
+	{
+		struct inode *i = ospfs_mk_linux_inode(dir->i_sb, entry_ino);
+		if (!i)
+			return -ENOMEM;
+		d_instantiate(dentry, i);
+		return 0;
+	}
 }
 
 
