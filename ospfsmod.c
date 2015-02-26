@@ -791,7 +791,7 @@ clear_block(uint32_t* block)
 		block[i] = 0;
 }
 
-/*
+
 uint32_t
 allocate_inode(void) {
   
@@ -828,7 +828,7 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *new_block;
 
 	/* EXERCISE: Your code here */
-/*
+
 
 	if (n >= OSPFS_NDIRECT + 2*OSPFS_NINDIRECT)
 	{
@@ -1028,7 +1028,7 @@ remove_block(ospfs_inode_t *oi)
 
 	/* EXERCISE: Your code here */
 
-/*
+
 	//if it is in the direct block
 	if(n <= OSPFS_NDIRECT)
 	{
@@ -1123,123 +1123,6 @@ remove_block(ospfs_inode_t *oi)
 	return 0; // Replace this line
 }
 
-*/
-
-
-static int
-add_block(ospfs_inode_t *oi)
-{
-  // current number of blocks in file
-  uint32_t n = ospfs_size2nblocks(oi->oi_size);
-
-  uint32_t new_blockno;
-  // keep track of allocations to free in case of -ENOSPC
-  int alloced_indir = 0;
-  int alloced_indir2 = 0;
-  uint32_t* indir_table;
-  uint32_t** indir2_table;
-  uint32_t indirIndex;
-  uint32_t directIndex;
-
-  indirIndex = indir_index(n);
-  directIndex = direct_index(n);
-
-  // If we have available direct block
-  if (n < OSPFS_NDIRECT)
-    {
-      new_blockno = allocate_block();
-      if(!new_blockno)
-	return -ENOSPC;
-      memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-      oi->oi_direct[n] = new_blockno;
-    }
-  // If we need an indirect block
-  else if (n < OSPFS_NDIRECT + OSPFS_NINDIRECT)
-    {
-      if (!oi->oi_indirect)
-	{
-	  new_blockno = allocate_block();
-	  if (!new_blockno)
-	    return -ENOSPC;
-	  memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-	  alloced_indir = 1;
-	  oi->oi_indirect = new_blockno;
-	  eprintk("Indirect block allocated: %d\n", oi->oi_indirect);
-	}
-
-      new_blockno = allocate_block();
-      if (!new_blockno)
-	{
-	  if (alloced_indir)
-	    {
-	      free_block(oi->oi_indirect);
-	      oi->oi_indirect = 0;
-	    }
-	  return -ENOSPC;
-	}
-      memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-
-      indir_table = ospfs_block(oi->oi_indirect);
-      indir_table[directIndex] = new_blockno;
-      eprintk("direct index: %d\n", directIndex);
-      eprintk("direct block in indirect block: %d\n", indir_table[directIndex]);
-    }
-  // We need a doubly indirect block
-  else if (n < OSPFS_MAXFILEBLKS)
-    {
-      if (!oi->oi_indirect2)
-	{
-	  new_blockno = allocate_block();
-	  if (!new_blockno)
-	    return -ENOSPC;
-	  memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-	  alloced_indir2 = 1;
-	  oi->oi_indirect2 = new_blockno;
-	}
-
-      indir2_table = (uint32_t**) ospfs_block(oi->oi_indirect2);
-      if (!indir2_table[indirIndex])
-	{
-	  new_blockno = allocate_block();
-	  if (!new_blockno)
-	    {
-	      if (alloced_indir2)
-		{
-		  free_block(oi->oi_indirect2);
-		  oi->oi_indirect2 = 0;
-		}
-	      return -ENOSPC;
-	    }
-	  memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-	  alloced_indir = 1;
-	  indir2_table[indirIndex] = new_blockno;
-	}
-      
-      new_blockno = allocate_block();
-      if (!new_blockno)
-	{
-	  if (alloced_indir)
-	    {
-	      free_block(indir2_table[indirIndex]);
-	      indir2_table[indirIndex] = 0;
-	    }
-	  if (alloced_indir2)
-	    {
-	      free_block(oi->oi_indirect2);
-	      oi->oi_indirect2 = 0;
-	    }
-	}                
-      memset(ospfs_block(new_blockno), 0, OSPFS_BLKSIZE);
-      
-      indir_table = (uint32_t*) ospfs_block(indir2_table[indirIndex]);
-      indir_table[directIndex] = new_blockno;
-    }
-  // File has maximum blocks already
-  else
-    return -EIO;
-  oi->oi_size+= OSPFS_BLKSIZE;
-  return 0;
-}
 
 // change_size(oi, want_size)
 //	Use this function to change a file's size, allocating and freeing
@@ -1323,87 +1206,6 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	oi->oi_size = new_size;
 	return 0; // Replace this line
 }
-
-// remove_block(ospfs_inode_t *oi)
-//   Removes a single data block from the end of a file, freeing
-//   any indirect and indirect^2 blocks that are no
-//   longer needed. (Helper function for change_size)
-//
-// Inputs: oi -- pointer to the file we want to shrink
-// Returns: 0 if successful, < 0 on error.
-//          If the function is successful, then oi->oi_size
-//          should be set to the maximum file size that could
-//          fit in oi's blocks.  If the function returns -EIO (for
-//          instance if an indirect block that should be there isn't),
-//          then oi->oi_size should remain unchanged.
-//
-// EXERCISE: Finish off this function.
-//
-// Remember that you must free any indirect and doubly-indirect blocks
-// that are no longer necessary after shrinking the file.  Removing a
-// single data block could result in as many as 3 disk blocks being
-// deallocated.  Also, if you free a block, make sure that
-// you set the block pointer to 0.  Don't leave pointers to
-// deallocated blocks laying around!
-
-static int
-remove_block(ospfs_inode_t *oi)
-{
-  // current number of blocks in file
-  uint32_t n = ospfs_size2nblocks(oi->oi_size);
-  uint32_t* indir_table;
-  uint32_t** indir2_table;
-  uint32_t indirIndex = indir_index(n-1);
-  uint32_t directIndex = direct_index(n-1);
-
-  (void) n;
-  eprintk("remove block\n");
-  // If empty file - return.
-  if (!n)
-    return -EIO;
-  // Next allocated block is direct
-  else if (n <= OSPFS_NDIRECT)
-    {
-      eprintk("direct remove blk#: %d\n", oi->oi_direct[n-1]);
-      free_block(oi->oi_direct[n-1]);      
-      oi->oi_direct[n-1] = 0;
-    }
-  // Next allocated block is indirect
-  else if (n <= OSPFS_NDIRECT + OSPFS_NINDIRECT)
-    {
-      eprintk("indirect remove\n");
-      indir_table = (uint32_t*) ospfs_block(oi->oi_indirect);      
-      free_block(indir_table[directIndex]);
-      indir_table[directIndex] = 0;
-      if (!directIndex)
-	{
-	  free_block(oi->oi_indirect);
-	  oi->oi_indirect = 0;
-	}
-    }
-  // Next allocated block is doubly indirect
-  else
-    {
-      eprintk("indirect2 remove\n");
-      indir2_table = (uint32_t**) ospfs_block(oi->oi_indirect2);
-      indir_table = (uint32_t*) ospfs_block(indir2_table[indirIndex]);
-      free_block(indir_table[directIndex]);
-      indir_table[directIndex] = 0;
-      if (!directIndex)
-	{
-	  free_block(indir_table[indirIndex]);
-	  indir_table[indirIndex] = 0;
-	  if (!indirIndex)
-	    {
-	      free_block(oi->oi_indirect2);
-	      oi->oi_indirect2 = 0;
-	    }
-	}
-    }  
-  oi->oi_size -= OSPFS_BLKSIZE;
-  return 0;
-}
-
 
 
 // ospfs_notify_change
